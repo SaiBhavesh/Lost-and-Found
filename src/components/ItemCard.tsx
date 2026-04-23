@@ -12,25 +12,40 @@ export function ItemCard({ item }: { item: Item }) {
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
-      onClick={() => navigate(`/item/${item.id}`)}
+      className="group cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all overflow-hidden border-border/60"
+      onClick={() => navigate(`/app/item/${item.id}`)}
     >
       {thumbnail && (
-        <div className="h-36 w-full overflow-hidden bg-muted">
-          <img src={thumbnail} alt={item.title} className="w-full h-full object-cover" />
-        </div>
-      )}
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2">
-            <Badge variant={item.type === 'lost' ? 'destructive' : 'default'} className="text-[10px] uppercase tracking-wider px-1.5 py-0">
+        <div className="h-40 w-full overflow-hidden bg-muted relative">
+          <img
+            src={thumbnail}
+            alt={item.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+          <div className="absolute top-2 left-2 flex items-center gap-1.5">
+            <Badge
+              variant={item.type === 'lost' ? 'destructive' : 'default'}
+              className="text-[10px] uppercase tracking-wider px-1.5 py-0 shadow-sm"
+            >
               {item.type}
             </Badge>
             <StatusBadge status={item.status} />
           </div>
         </div>
+      )}
+      <CardContent className="p-4">
+        {!thumbnail && (
+          <div className="flex items-center gap-2 mb-2">
+            <Badge variant={item.type === 'lost' ? 'destructive' : 'default'} className="text-[10px] uppercase tracking-wider px-1.5 py-0">
+              {item.type}
+            </Badge>
+            <StatusBadge status={item.status} />
+          </div>
+        )}
 
-        <h3 className="font-medium text-sm mb-1 line-clamp-1">{item.title}</h3>
+        <h3 className="font-semibold text-sm mb-1 line-clamp-1 group-hover:text-primary transition-colors">
+          {item.title}
+        </h3>
         <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{item.description}</p>
 
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">

@@ -5,33 +5,49 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, ArrowLeft, Mail, Lock } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Mail, Lock, User as UserIcon } from 'lucide-react';
 
-export default function LoginPage() {
-  const { login } = useAuth();
+export default function SignUpPage() {
+  const { signup } = useAuth();
   const navigate = useNavigate();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!name.trim()) {
+      setError('Please enter your full name.');
+      return;
+    }
     if (!email.endsWith('@stevens.edu')) {
       setError('Please use your @stevens.edu email address.');
       return;
     }
-    if (!login(email)) {
-      setError('Login failed. Please try again.');
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+    if (password !== confirm) {
+      setError('Passwords do not match.');
+      return;
+    }
+    if (!signup(email, name)) {
+      setError('Could not create account. Please try again.');
       return;
     }
     navigate('/app', { replace: true });
   };
 
-  const quickLogin = (email: string) => {
-    setEmail(email);
-    if (login(email)) navigate('/app', { replace: true });
-  };
+  const perks = [
+    'Post lost and found items in seconds',
+    'Get smart match suggestions automatically',
+    'Private in-app messaging with other students',
+    'Stevens-only — verified @stevens.edu accounts',
+  ];
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
@@ -48,10 +64,15 @@ export default function LoginPage() {
           <span className="font-semibold">Stevens Lost &amp; Found</span>
         </Link>
         <div className="relative">
-          <p className="text-3xl font-semibold leading-tight mb-4">
-            &ldquo;Found my laptop within two hours of posting. This app is a lifesaver.&rdquo;
-          </p>
-          <p className="text-sm text-white/80">— Maria G., SSE &apos;26</p>
+          <h2 className="text-3xl font-semibold leading-tight mb-6">Join the campus community</h2>
+          <ul className="space-y-3">
+            {perks.map(p => (
+              <li key={p} className="flex items-start gap-2 text-sm text-white/90">
+                <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{p}</span>
+              </li>
+            ))}
+          </ul>
         </div>
         <div className="relative text-xs text-white/70">
           © {new Date().getFullYear()} Stevens Institute of Technology
@@ -75,11 +96,27 @@ export default function LoginPage() {
               <div className="mx-auto mb-2 h-12 w-12 rounded-xl bg-primary flex items-center justify-center shadow-sm">
                 <span className="text-primary-foreground font-bold text-lg">S</span>
               </div>
-              <CardTitle className="text-2xl">Welcome back</CardTitle>
-              <CardDescription>Sign in with your Stevens email to continue</CardDescription>
+              <CardTitle className="text-2xl">Create your account</CardTitle>
+              <CardDescription>Sign up with your Stevens email to get started</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-xs">Full name</Label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Jane Doe"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      className="pl-9"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-xs">Email</Label>
                   <div className="relative">
@@ -91,10 +128,10 @@ export default function LoginPage() {
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       className="pl-9"
-                      autoFocus
                     />
                   </div>
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-xs">Password</Label>
                   <div className="relative">
@@ -102,48 +139,40 @@ export default function LoginPage() {
                     <Input
                       id="password"
                       type="password"
-                      placeholder="••••••••"
+                      placeholder="At least 6 characters"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       className="pl-9"
                     />
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirm" className="text-xs">Confirm password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="confirm"
+                      type="password"
+                      placeholder="Re-enter password"
+                      value={confirm}
+                      onChange={e => setConfirm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+
                 {error && (
                   <p className="text-sm text-destructive flex items-center gap-1">
                     <AlertCircle className="h-3.5 w-3.5" />{error}
                   </p>
                 )}
-                <Button type="submit" className="w-full">Sign In</Button>
+                <Button type="submit" className="w-full">Create account</Button>
               </form>
 
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                <div className="relative flex justify-center text-[11px] uppercase tracking-wider">
-                  <span className="bg-card px-2 text-muted-foreground">Quick demo login</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                {[
-                  { email: 'jdoe@stevens.edu', label: 'Student' },
-                  { email: 'asmith@stevens.edu', label: 'Moderator' },
-                  { email: 'admin@stevens.edu', label: 'Admin' },
-                ].map(u => (
-                  <button
-                    key={u.email}
-                    onClick={() => quickLogin(u.email)}
-                    className="text-xs text-left px-3 py-2 rounded-md border bg-card hover:bg-accent hover:border-primary/40 transition-all"
-                  >
-                    <span className="font-medium">{u.label}</span>
-                    <span className="text-muted-foreground"> — {u.email}</span>
-                  </button>
-                ))}
-              </div>
-
               <p className="text-center text-xs text-muted-foreground mt-6">
-                Don&apos;t have an account?{' '}
-                <Link to="/signup" className="text-primary font-medium hover:underline">Sign up</Link>
+                Already have an account?{' '}
+                <Link to="/login" className="text-primary font-medium hover:underline">Log in</Link>
               </p>
             </CardContent>
           </Card>

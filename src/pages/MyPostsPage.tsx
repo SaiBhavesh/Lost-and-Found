@@ -20,7 +20,7 @@ export default function MyPostsPage() {
           title="No posts yet"
           description="Items you report as lost or found will show up here."
           actionLabel="Report an Item"
-          onAction={() => navigate('/post')}
+          onAction={() => navigate('/app/post')}
           icon={<FileText className="h-6 w-6 text-muted-foreground" />}
         />
       ) : (

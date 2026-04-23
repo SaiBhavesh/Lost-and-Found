@@ -44,7 +44,7 @@ export default function ItemFeedPage({ type }: ItemFeedProps) {
             {items.length} {items.length === 1 ? 'item' : 'items'}
           </p>
         </div>
-        <Button size="sm" onClick={() => navigate(`/post?type=${type}`)}>
+        <Button size="sm" onClick={() => navigate(`/app/post?type=${type}`)}>
           <Plus className="h-3.5 w-3.5 mr-1" />Report {type === 'lost' ? 'Lost' : 'Found'}
         </Button>
       </div>
@@ -92,7 +92,7 @@ export default function ItemFeedPage({ type }: ItemFeedProps) {
           title={`No ${type} items found`}
           description={hasFilters ? 'Try adjusting your filters.' : `No reported ${type} items yet today.`}
           actionLabel={`Report ${type === 'lost' ? 'Lost' : 'Found'} Item`}
-          onAction={() => navigate(`/post?type=${type}`)}
+          onAction={() => navigate(`/app/post?type=${type}`)}
         />
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">

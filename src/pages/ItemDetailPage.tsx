@@ -125,7 +125,7 @@ export default function ItemDetailPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs">{match.score}% match</Badge>
-                      <Button size="sm" variant="outline" onClick={() => navigate(`/item/${otherId}`)}>
+                      <Button size="sm" variant="outline" onClick={() => navigate(`/app/item/${otherId}`)}>
                         View
                       </Button>
                     </div>
