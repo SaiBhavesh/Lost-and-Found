@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ItemCard } from '@/components/ItemCard';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { mockItems, ItemType, ItemCategory, CATEGORY_LABELS, STATUS_LABELS, CAMPUS_LOCATIONS } from '@/data/mock-data';
 import { cn } from '@/lib/utils';
-import { Plus, X, Tag } from 'lucide-react';
+import { Plus, X, Tag, Search } from 'lucide-react';
 
 interface ItemFeedProps {
   type: ItemType;
@@ -14,25 +14,48 @@ interface ItemFeedProps {
 
 export default function ItemFeedPage({ type }: ItemFeedProps) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const q = searchParams.get('q')?.trim() ?? '';
   const [category, setCategory] = useState<string>('all');
   const [status, setStatus] = useState<string>('all');
   const [location, setLocation] = useState<string>('all');
 
   const items = useMemo(() => {
+    const needle = q.toLowerCase();
     return mockItems
       .filter(i => i.type === type)
       .filter(i => category === 'all' || i.category === category)
       .filter(i => status === 'all' || i.status === status)
       .filter(i => location === 'all' || i.location === location)
+      .filter(i => {
+        if (!needle) return true;
+        return (
+          i.title.toLowerCase().includes(needle) ||
+          i.description.toLowerCase().includes(needle) ||
+          i.location.toLowerCase().includes(needle) ||
+          CATEGORY_LABELS[i.category].toLowerCase().includes(needle)
+        );
+      })
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [type, category, status, location]);
+  }, [type, category, status, location, q]);
 
-  const hasFilters = category !== 'all' || status !== 'all' || location !== 'all';
+  const hasFilters = category !== 'all' || status !== 'all' || location !== 'all' || q !== '';
 
   const clearFilters = () => {
     setCategory('all');
     setStatus('all');
     setLocation('all');
+    if (q) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('q');
+      setSearchParams(next, { replace: true });
+    }
+  };
+
+  const clearQuery = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('q');
+    setSearchParams(next, { replace: true });
   };
 
   return (
@@ -42,12 +65,28 @@ export default function ItemFeedPage({ type }: ItemFeedProps) {
           <h1 className="text-xl font-semibold">{type === 'lost' ? 'Lost Items' : 'Found Items'}</h1>
           <p className="text-sm text-muted-foreground">
             {items.length} {items.length === 1 ? 'item' : 'items'}
+            {q && <> matching "<span className="font-medium text-foreground">{q}</span>"</>}
           </p>
         </div>
         <Button size="sm" onClick={() => navigate(`/app/post?type=${type}`)}>
           <Plus className="h-3.5 w-3.5 mr-1" />Report {type === 'lost' ? 'Lost' : 'Found'}
         </Button>
       </div>
+
+      {q && (
+        <div className="mb-3 inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs">
+          <Search className="h-3 w-3" />
+          <span>Search: "{q}"</span>
+          <button
+            type="button"
+            aria-label="Clear search query"
+            onClick={clearQuery}
+            className="inline-flex items-center justify-center h-4 w-4 rounded-full hover:bg-primary/20"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
 
       {/* Quick category chips */}
       <div className="flex flex-wrap items-center gap-1.5 mb-3">

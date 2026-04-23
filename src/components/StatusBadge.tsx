@@ -18,13 +18,43 @@ const solidStatusStyles: Record<ItemStatus, string> = {
   closed: 'bg-foreground/80 text-background border-foreground/80',
 };
 
+const overlayDotStyles: Record<ItemStatus, string> = {
+  open: 'bg-info ring-info/30',
+  potential_match: 'bg-warning ring-warning/30',
+  claimed: 'bg-primary ring-primary/30',
+  returned: 'bg-success ring-success/30',
+  closed: 'bg-foreground/70 ring-foreground/20',
+};
+
 export function StatusBadge({
   status,
   solid = false,
+  overlay = false,
 }: {
   status: ItemStatus;
   solid?: boolean;
+  overlay?: boolean;
 }) {
+  if (overlay) {
+    return (
+      <span
+        className={cn(
+          'inline-flex items-center gap-1.5 h-[22px] pl-1.5 pr-2 rounded-full',
+          'bg-background/75 text-foreground backdrop-blur-md ring-1 ring-border/50 shadow-sm',
+          'text-[10px] font-semibold',
+        )}
+      >
+        <span
+          className={cn(
+            'h-1.5 w-1.5 rounded-full ring-2',
+            overlayDotStyles[status],
+          )}
+        />
+        {STATUS_LABELS[status]}
+      </span>
+    );
+  }
+
   return (
     <Badge
       variant="outline"
