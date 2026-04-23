@@ -7,6 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { ItemCard } from '@/components/ItemCard';
 import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/contexts/ThemeContext';
+import mapLight from '@/assets/map-light.svg';
+import mapDark from '@/assets/map-dark.svg';
 import {
   mockItems,
   CATEGORY_LABELS,
@@ -56,6 +59,7 @@ const BUILDINGS: BuildingPin[] = [
 
 export default function CampusMapPage() {
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [typeFilter, setTypeFilter] = useState<'all' | ItemType>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | ItemCategory>('all');
   const [activeBuilding, setActiveBuilding] = useState<BuildingKey | null>(null);
@@ -157,30 +161,14 @@ export default function CampusMapPage() {
             style={{ aspectRatio: '16 / 10' }}
             aria-label="Stevens campus map"
           >
-            {/* Land base */}
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-emerald-100/60 to-emerald-50 dark:from-emerald-950/40 dark:via-emerald-900/20 dark:to-emerald-950/40" />
-            {/* Hudson river strip on east edge */}
-            <div className="absolute inset-y-0 right-0 w-[8%] bg-gradient-to-r from-sky-200/40 via-sky-300/60 to-sky-400/60 dark:from-sky-900/30 dark:via-sky-800/40 dark:to-sky-700/50">
-              <span className="absolute top-2 right-1 text-[9px] tracking-widest font-semibold rotate-90 origin-top-right text-sky-700/70 dark:text-sky-300/70">
-                HUDSON RIVER
-              </span>
-            </div>
-            {/* Subtle grid */}
-            <svg
-              className="absolute inset-0 w-full h-full opacity-[0.08] pointer-events-none"
+            {/* Theme-aware map backdrop */}
+            <img
+              src={theme === 'dark' ? mapDark : mapLight}
+              alt=""
               aria-hidden
-            >
-              <defs>
-                <pattern id="campus-grid" width="32" height="32" patternUnits="userSpaceOnUse">
-                  <path d="M 32 0 L 0 0 0 32" fill="none" stroke="currentColor" strokeWidth="0.5" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#campus-grid)" />
-            </svg>
-
-            {/* Quad outline (light shape) */}
-            <div className="absolute rounded-md border border-emerald-400/40 bg-emerald-200/30 dark:bg-emerald-700/15"
-              style={{ left: '40%', top: '38%', width: '20%', height: '18%' }} />
+              className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+              draggable={false}
+            />
 
             {/* Building pins */}
             {BUILDINGS.map(b => {

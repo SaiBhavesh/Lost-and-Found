@@ -1,23 +1,33 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { mockItems, mockMatches, mockUsers, CATEGORY_LABELS, STATUS_LABELS } from '@/data/mock-data';
+import { mockItems, mockMatches, mockUsers, CAMPUS_LOCATIONS, CATEGORY_LABELS, STATUS_LABELS } from '@/data/mock-data';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, MapPin, Clock, Package, User, MessageSquare } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Package, User, HandHeart } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useState } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 
 export default function ItemDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [claimOpen, setClaimOpen] = useState(false);
+  const [foundOpen, setFoundOpen] = useState(false);
   const item = mockItems.find(i => i.id === id);
+
+  const [foundLocation, setFoundLocation] = useState<string>(item?.location ?? '');
+  const [foundDate, setFoundDate] = useState('');
+  const [foundNote, setFoundNote] = useState('');
+  const [foundContact, setFoundContact] = useState<'email' | 'in_app'>('in_app');
+  const [submittingFound, setSubmittingFound] = useState(false);
 
   if (!item) {
     return (
@@ -36,9 +46,29 @@ export default function ItemDetailPage() {
   const statusSteps = ['open', 'potential_match', 'claimed', 'returned'] as const;
   const currentStepIndex = statusSteps.indexOf(item.status as any);
 
+  const canReportFound =
+    item.type === 'lost' && (item.status === 'open' || item.status === 'potential_match');
+
   const handleClaim = () => {
     toast.success('Claim submitted! The finder will review your answers.');
     setClaimOpen(false);
+  };
+
+  const handleReportFound = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!foundLocation || !foundDate) {
+      toast.error('Please fill in where and when you found it.');
+      return;
+    }
+    setSubmittingFound(true);
+    setTimeout(() => {
+      setSubmittingFound(false);
+      setFoundOpen(false);
+      setFoundNote('');
+      setFoundDate('');
+      setFoundContact('in_app');
+      toast.success(`Thanks! ${reporter?.name ?? 'The owner'} will be notified that you may have found this.`);
+    }, 600);
   };
 
   return (
@@ -58,10 +88,36 @@ export default function ItemDetailPage() {
             </div>
             <h1 className="text-xl font-semibold">{item.title}</h1>
           </div>
-          {item.type === 'found' && item.status === 'open' && (
-            <Button size="sm" onClick={() => setClaimOpen(true)}>Claim This Item</Button>
-          )}
+          <div className="flex flex-col sm:flex-row gap-2">
+            {item.type === 'found' && item.status === 'open' && (
+              <Button size="sm" onClick={() => setClaimOpen(true)}>Claim This Item</Button>
+            )}
+            {canReportFound && (
+              <Button size="sm" onClick={() => setFoundOpen(true)} className="gap-1.5">
+                <HandHeart className="h-3.5 w-3.5" />I Found This
+              </Button>
+            )}
+          </div>
         </div>
+
+        {canReportFound && (
+          <Card className="border-success/30 bg-success/5">
+            <CardContent className="p-3 flex items-start gap-3">
+              <div className="h-8 w-8 rounded-full bg-success/15 text-success flex items-center justify-center shrink-0">
+                <HandHeart className="h-4 w-4" />
+              </div>
+              <div className="flex-1 text-sm">
+                <p className="font-medium">Did you find this item?</p>
+                <p className="text-xs text-muted-foreground">
+                  Let {reporter?.name ?? 'the owner'} know directly — no need to fill out a full found report.
+                </p>
+              </div>
+              <Button size="sm" variant="outline" className="shrink-0" onClick={() => setFoundOpen(true)}>
+                Report match
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Status stepper */}
         <div className="flex items-center gap-1">
@@ -158,6 +214,116 @@ export default function ItemDetailPage() {
             </div>
             <Button onClick={handleClaim} className="w-full">Submit Claim</Button>
           </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={foundOpen} onOpenChange={setFoundOpen}>
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <HandHeart className="h-4 w-4 text-success" />
+              Report a Match
+            </SheetTitle>
+            <SheetDescription>
+              Tell {reporter?.name ?? 'the owner'} where and when you found their {item.title}.
+            </SheetDescription>
+          </SheetHeader>
+          <form onSubmit={handleReportFound} className="space-y-4 mt-4">
+            <div className="rounded-lg border border-border/60 bg-muted/30 p-3 flex gap-3">
+              {item.photos[0] && (
+                <img
+                  src={item.photos[0]}
+                  alt=""
+                  className="h-12 w-12 rounded object-cover shrink-0"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="text-xs font-medium truncate">{item.title}</p>
+                <p className="text-[11px] text-muted-foreground line-clamp-2">
+                  {item.description}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Where did you find it? *</Label>
+              <Select value={foundLocation} onValueChange={setFoundLocation}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Pick a location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CAMPUS_LOCATIONS.map(loc => (
+                    <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="found-date" className="text-xs">When did you find it? *</Label>
+              <Input
+                id="found-date"
+                type="datetime-local"
+                value={foundDate}
+                onChange={e => setFoundDate(e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="found-note" className="text-xs">Note (optional)</Label>
+              <Textarea
+                id="found-note"
+                value={foundNote}
+                onChange={e => setFoundNote(e.target.value)}
+                placeholder="Any details that might help them confirm — e.g. 'left on a bench near the entrance'"
+                className="text-sm min-h-[70px]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">How should they reach you?</Label>
+              <RadioGroup
+                value={foundContact}
+                onValueChange={(v: 'email' | 'in_app') => setFoundContact(v)}
+                className="flex gap-4"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="in_app" id="fc-app" />
+                  <Label htmlFor="fc-app" className="text-xs font-normal">In-app message</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="email" id="fc-email" />
+                  <Label htmlFor="fc-email" className="text-xs font-normal">Email</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <SheetFooter className="pt-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setFoundOpen(false)}
+                disabled={submittingFound}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submittingFound} className="gap-1.5">
+                <HandHeart className="h-3.5 w-3.5" />
+                {submittingFound ? 'Sending...' : 'Send match'}
+              </Button>
+            </SheetFooter>
+            <p className="text-[10px] text-muted-foreground">
+              Want to post a full Found listing instead?{' '}
+              <button
+                type="button"
+                className="text-primary hover:underline"
+                onClick={() => navigate(`/app/post?type=found`)}
+              >
+                Open full form
+              </button>
+            </p>
+          </form>
         </SheetContent>
       </Sheet>
     </div>

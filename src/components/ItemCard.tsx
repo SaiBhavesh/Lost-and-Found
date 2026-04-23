@@ -2,13 +2,17 @@ import { MapPin, Clock, Package } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Item, CATEGORY_LABELS } from '@/data/mock-data';
-import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
 export function ItemCard({ item }: { item: Item }) {
   const navigate = useNavigate();
   const thumbnail = item.photos[0];
+
+  const typeBadgeStyles = item.type === 'lost'
+    ? 'bg-destructive/85 text-destructive-foreground ring-destructive/20'
+    : 'bg-success/85 text-success-foreground ring-success/20';
 
   return (
     <Card
@@ -22,23 +26,34 @@ export function ItemCard({ item }: { item: Item }) {
             alt={item.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
+          <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/40 via-black/10 to-transparent pointer-events-none" />
           <div className="absolute top-2 left-2 flex items-center gap-1.5">
-            <Badge
-              variant={item.type === 'lost' ? 'destructive' : 'default'}
-              className="text-[10px] uppercase tracking-wider px-1.5 py-0 shadow-sm"
+            <span
+              className={cn(
+                'inline-flex items-center h-[22px] px-2 rounded-full text-[10px] font-semibold uppercase tracking-wider',
+                'backdrop-blur-md ring-1 shadow-sm',
+                typeBadgeStyles,
+              )}
             >
               {item.type}
-            </Badge>
-            <StatusBadge status={item.status} solid />
+            </span>
+            <StatusBadge status={item.status} overlay />
           </div>
         </div>
       )}
       <CardContent className="p-4">
         {!thumbnail && (
           <div className="flex items-center gap-2 mb-2">
-            <Badge variant={item.type === 'lost' ? 'destructive' : 'default'} className="text-[10px] uppercase tracking-wider px-1.5 py-0">
+            <span
+              className={cn(
+                'inline-flex items-center h-[22px] px-2 rounded-full text-[10px] font-semibold uppercase tracking-wider ring-1',
+                item.type === 'lost'
+                  ? 'bg-destructive/10 text-destructive ring-destructive/25'
+                  : 'bg-success/10 text-success ring-success/25',
+              )}
+            >
               {item.type}
-            </Badge>
+            </span>
             <StatusBadge status={item.status} />
           </div>
         )}
