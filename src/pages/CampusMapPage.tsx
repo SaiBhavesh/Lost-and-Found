@@ -18,20 +18,12 @@ import {
 } from '@/data/mock-data';
 
 type BuildingKey =
-  | 'Babbio Center'
-  | 'Edwin A. Stevens Hall'
-  | 'Burchard Building'
-  | 'McLean Hall'
-  | 'Palmer Hall'
-  | 'Morton-Peirce-Kidde Complex'
-  | 'Howe Center'
-  | 'Library'
-  | 'Student Center'
   | 'Schaefer Athletic Center'
-  | 'Gateway Academic Center'
-  | 'Campus Quad'
-  | 'Castle Point Lookout'
-  | 'River Terrace';
+  | 'McLean Hall'
+  | 'Edwin A. Stevens Hall'
+  | 'Howe Center'
+  | 'Babbio Center'
+  | 'Library';
 
 interface BuildingPin {
   key: BuildingKey;
@@ -43,20 +35,12 @@ interface BuildingPin {
 // Coordinates are percentages of the campus_map_*.png aspect (2241×1587).
 // (x, y) = center of each building's rooftop as seen on the aerial illustration.
 const BUILDINGS: BuildingPin[] = [
-  { key: 'Schaefer Athletic Center', short: 'Schaefer', x: 18, y: 36 },
-  { key: 'McLean Hall', short: 'McLean', x: 32, y: 32 },
-  { key: 'Morton-Peirce-Kidde Complex', short: 'Morton', x: 40, y: 30 },
-  { key: 'Burchard Building', short: 'Burchard', x: 48, y: 32 },
-  { key: 'Campus Quad', short: 'Quad', x: 42, y: 40 },
-  { key: 'Palmer Hall', short: 'Palmer', x: 22, y: 46 },
-  { key: 'Edwin A. Stevens Hall', short: 'EAS', x: 36, y: 48 },
-  { key: 'Howe Center', short: 'Howe', x: 52, y: 46 },
-  { key: 'Babbio Center', short: 'Babbio', x: 64, y: 50 },
-  { key: 'River Terrace', short: 'River', x: 80, y: 40 },
-  { key: 'Library', short: 'Library', x: 44, y: 58 },
-  { key: 'Student Center', short: 'Student Ctr', x: 28, y: 64 },
-  { key: 'Gateway Academic Center', short: 'Gateway', x: 74, y: 72 },
-  { key: 'Castle Point Lookout', short: 'Castle Point', x: 82, y: 82 },
+  { key: 'Schaefer Athletic Center', short: 'Schaefer', x: 55, y: 78 },
+  { key: 'McLean Hall', short: 'McLean', x: 78, y: 68 },
+  { key: 'Edwin A. Stevens Hall', short: 'EAS', x: 46, y: 52 },
+  { key: 'Howe Center', short: 'Howe', x: 52, y: 42 },
+  { key: 'Babbio Center', short: 'Babbio', x: 72, y: 58 },
+  { key: 'Library', short: 'Library', x: 55, y: 57 },
 ];
 
 export default function CampusMapPage() {
