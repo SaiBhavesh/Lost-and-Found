@@ -16,16 +16,22 @@ import { useState, useEffect } from 'react';
 import { fetchProfile } from '@/lib/supabase-data';
 import type { User } from '@/lib/constants';
 
+const ADMIN_FILTERS = { includeClosed: true };
+const EMPTY_ARRAY: any[] = [];
+
 export default function AdminPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: items = [], isLoading: itemsLoading } = useItems({ includeClosed: true });
-  const { data: claims = [] } = useClaims();
+  const { data, isLoading: itemsLoading } = useItems(ADMIN_FILTERS);
+  const items = data || EMPTY_ARRAY;
+  const { data: claimsData } = useClaims();
+  const claims = claimsData || EMPTY_ARRAY;
   const updateStatus = useUpdateItemStatus();
 
   // Fetch all reporter profiles
   const [profiles, setProfiles] = useState<Map<string, User>>(new Map());
   useEffect(() => {
+    if (!items.length) return;
     const reporterIds = [...new Set(items.map(i => i.reporterId))];
     Promise.all(reporterIds.map(async id => {
       const p = await fetchProfile(id);
