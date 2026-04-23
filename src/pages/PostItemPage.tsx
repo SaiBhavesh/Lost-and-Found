@@ -57,7 +57,7 @@ export default function PostItemPage() {
     setTimeout(() => {
       setSubmitting(false);
       toast.success(`${type === 'lost' ? 'Lost' : 'Found'} item reported successfully!`);
-      navigate(type === 'lost' ? '/lost' : '/found');
+      navigate(type === 'lost' ? '/app/lost' : '/app/found');
     }, 800);
   };
 

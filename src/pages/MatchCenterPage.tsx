@@ -66,8 +66,8 @@ export default function MatchCenterPage() {
                 <p className="text-xs text-muted-foreground mt-3 mb-3">{match.reason}</p>
 
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={() => navigate(`/item/${lost.id}`)}>Review Lost Item</Button>
-                  <Button size="sm" variant="outline" onClick={() => navigate(`/item/${found.id}`)}>Review Found Item</Button>
+                  <Button size="sm" onClick={() => navigate(`/app/item/${lost.id}`)}>Review Lost Item</Button>
+                  <Button size="sm" variant="outline" onClick={() => navigate(`/app/item/${found.id}`)}>Review Found Item</Button>
                 </div>
               </CardContent>
             </Card>

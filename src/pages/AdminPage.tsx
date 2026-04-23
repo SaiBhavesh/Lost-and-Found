@@ -68,7 +68,7 @@ export default function AdminPage() {
             {mockItems.map(item => {
               const reporter = mockUsers.find(u => u.id === item.reporterId);
               return (
-                <TableRow key={item.id} className="cursor-pointer" onClick={() => navigate(`/item/${item.id}`)}>
+                <TableRow key={item.id} className="cursor-pointer" onClick={() => navigate(`/app/item/${item.id}`)}>
                   <TableCell className="text-xs font-medium">{item.title}</TableCell>
                   <TableCell>
                     <Badge variant={item.type === 'lost' ? 'destructive' : 'default'} className="text-[10px] uppercase px-1.5 py-0">

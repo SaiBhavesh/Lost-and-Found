@@ -5,6 +5,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (email: string) => boolean;
+  signup: (email: string, name: string) => boolean;
   logout: () => void;
   switchRole: (role: UserRole) => void;
 }
@@ -26,6 +27,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  const signup = (email: string, name: string) => {
+    if (!email.endsWith('@stevens.edu')) return false;
+    const newUser: User = {
+      id: `u_${Date.now()}`,
+      email,
+      name: name.trim(),
+      role: 'student',
+    };
+    setUser(newUser);
+    return true;
+  };
+
   const logout = () => setUser(null);
 
   const switchRole = (role: UserRole) => {
@@ -33,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout, switchRole }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, signup, logout, switchRole }}>
       {children}
     </AuthContext.Provider>
   );
