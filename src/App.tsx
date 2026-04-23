@@ -15,6 +15,7 @@ import PostItemPage from "@/pages/PostItemPage";
 import ItemDetailPage from "@/pages/ItemDetailPage";
 import MatchCenterPage from "@/pages/MatchCenterPage";
 import MyPostsPage from "@/pages/MyPostsPage";
+import CampusMapPage from "@/pages/CampusMapPage";
 import AdminPage from "@/pages/AdminPage";
 import NotFound from "@/pages/NotFound";
 
@@ -60,6 +61,7 @@ const App = () => (
                 <Route path="found" element={<ItemFeedPage type="found" />} />
                 <Route path="post" element={<PostItemPage />} />
                 <Route path="item/:id" element={<ItemDetailPage />} />
+                <Route path="map" element={<CampusMapPage />} />
                 <Route path="matches" element={<MatchCenterPage />} />
                 <Route path="my-posts" element={<MyPostsPage />} />
                 <Route path="admin" element={<AdminPage />} />

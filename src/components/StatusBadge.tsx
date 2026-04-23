@@ -10,9 +10,29 @@ const statusStyles: Record<ItemStatus, string> = {
   closed: 'bg-muted text-muted-foreground border-border',
 };
 
-export function StatusBadge({ status }: { status: ItemStatus }) {
+const solidStatusStyles: Record<ItemStatus, string> = {
+  open: 'bg-info text-info-foreground border-info',
+  potential_match: 'bg-warning text-warning-foreground border-warning',
+  claimed: 'bg-primary text-primary-foreground border-primary',
+  returned: 'bg-success text-success-foreground border-success',
+  closed: 'bg-foreground/80 text-background border-foreground/80',
+};
+
+export function StatusBadge({
+  status,
+  solid = false,
+}: {
+  status: ItemStatus;
+  solid?: boolean;
+}) {
   return (
-    <Badge variant="outline" className={cn('text-[11px] font-medium', statusStyles[status])}>
+    <Badge
+      variant="outline"
+      className={cn(
+        'text-[11px] font-semibold',
+        solid ? `${solidStatusStyles[status]} shadow-sm` : statusStyles[status],
+      )}
+    >
       {STATUS_LABELS[status]}
     </Badge>
   );
