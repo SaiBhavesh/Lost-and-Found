@@ -150,10 +150,12 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="mt-4 border-dashed">
+          <Card className="mt-4 border-primary/20 bg-gradient-to-br from-primary/5 to-info/5 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => navigate('/app/map')}
+          >
             <CardContent className="p-4 text-center">
-              <MapPin className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
-              <p className="text-xs font-medium mb-1">Campus map coming soon</p>
+              <MapPin className="h-5 w-5 mx-auto text-primary mb-2" />
+              <p className="text-xs font-medium mb-1">Open Campus Map</p>
               <p className="text-[11px] text-muted-foreground">
                 See exactly where items were lost or found.
               </p>

@@ -29,7 +29,7 @@ export function ItemCard({ item }: { item: Item }) {
             >
               {item.type}
             </Badge>
-            <StatusBadge status={item.status} />
+            <StatusBadge status={item.status} solid />
           </div>
         </div>
       )}

@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Search, MapPin, GitCompare, FileText, Shield, Plus,
+  LayoutDashboard, Search, MapPin, GitCompare, FileText, Shield, Plus, Map,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
@@ -15,6 +15,7 @@ const mainNav = [
   { title: 'Dashboard', url: '/app', icon: LayoutDashboard },
   { title: 'Lost Items', url: '/app/lost', icon: Search },
   { title: 'Found Items', url: '/app/found', icon: MapPin },
+  { title: 'Campus Map', url: '/app/map', icon: Map },
   { title: 'Matches', url: '/app/matches', icon: GitCompare },
   { title: 'My Posts', url: '/app/my-posts', icon: FileText },
 ];

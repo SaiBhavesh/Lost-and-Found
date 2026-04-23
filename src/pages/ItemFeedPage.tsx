@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { ItemCard } from '@/components/ItemCard';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockItems, ItemType, ItemCategory, ItemStatus, CATEGORY_LABELS, STATUS_LABELS, CAMPUS_LOCATIONS } from '@/data/mock-data';
-import { Plus, X } from 'lucide-react';
+import { mockItems, ItemType, ItemCategory, CATEGORY_LABELS, STATUS_LABELS, CAMPUS_LOCATIONS } from '@/data/mock-data';
+import { cn } from '@/lib/utils';
+import { Plus, X, Tag } from 'lucide-react';
 
 interface ItemFeedProps {
   type: ItemType;
@@ -47,6 +47,26 @@ export default function ItemFeedPage({ type }: ItemFeedProps) {
         <Button size="sm" onClick={() => navigate(`/app/post?type=${type}`)}>
           <Plus className="h-3.5 w-3.5 mr-1" />Report {type === 'lost' ? 'Lost' : 'Found'}
         </Button>
+      </div>
+
+      {/* Quick category chips */}
+      <div className="flex flex-wrap items-center gap-1.5 mb-3">
+        <Tag className="h-3.5 w-3.5 text-muted-foreground mr-0.5" />
+        <CategoryChip
+          active={category === 'all'}
+          onClick={() => setCategory('all')}
+        >
+          All
+        </CategoryChip>
+        {(Object.keys(CATEGORY_LABELS) as ItemCategory[]).map(cat => (
+          <CategoryChip
+            key={cat}
+            active={category === cat}
+            onClick={() => setCategory(cat)}
+          >
+            {CATEGORY_LABELS[cat]}
+          </CategoryChip>
+        ))}
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4 sticky top-0 bg-background py-2 z-10">
@@ -102,5 +122,30 @@ export default function ItemFeedPage({ type }: ItemFeedProps) {
         </div>
       )}
     </div>
+  );
+}
+
+function CategoryChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'h-7 px-2.5 rounded-full text-[11px] font-medium border transition-colors',
+        active
+          ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+          : 'bg-background text-foreground border-border hover:bg-accent',
+      )}
+    >
+      {children}
+    </button>
   );
 }
