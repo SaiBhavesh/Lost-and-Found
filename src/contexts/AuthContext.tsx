@@ -61,43 +61,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Get the initial session
-    supabase.auth.getSession()
-      .then(async ({ data: { session: s } }) => {
-        if (!mounted) return;
-        setSession(s);
-        if (s?.user) {
+    // Safety timeout: absolutely ensure we never get stuck on the loading screen
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && loading) {
+        setLoading(false);
+      }
+    }, 2000);
+
+    const loadSessionAndProfile = async (s: Session | null) => {
+      if (!mounted) return;
+      setSession(s);
+      
+      // Stop blocking the UI immediately! We don't need the profile to show the app shell.
+      setLoading(false);
+
+      if (s?.user) {
+        try {
           const profile = await fetchProfile(s.user.id);
-          if (mounted) setUser(profile);
+          if (mounted) {
+            setUser(profile);
+          }
+        } catch (err) {
+          console.error('Profile fetch error:', err);
+        }
+      } else {
+        if (mounted) setUser(null);
+      }
+    };
+
+    // We can rely primarily on onAuthStateChange since it fires an INITIAL_SESSION event
+    // immediately upon subscription in supabase-js v2.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, s) => {
+        loadSessionAndProfile(s);
+      },
+    );
+
+    // As a fallback, in case onAuthStateChange takes too long or misses the initial event,
+    // we also call getSession and stop loading if there's no session.
+    supabase.auth.getSession()
+      .then(({ data: { session: s }, error }) => {
+        if (error) console.error('getSession error:', error);
+        if (mounted) {
+          // Only fetch if we haven't already populated the user to avoid double fetches
+          if (s && !user) {
+             loadSessionAndProfile(s);
+          } else {
+             setLoading(false);
+          }
         }
       })
       .catch((err) => {
         console.error('getSession error:', err);
-      })
-      .finally(() => {
         if (mounted) setLoading(false);
       });
 
-    // Subscribe to auth changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, s) => {
-        if (!mounted) return;
-        setSession(s);
-        if (s?.user) {
-          try {
-            const profile = await fetchProfile(s.user.id);
-            if (mounted) setUser(profile);
-          } catch (err) {
-            console.error('onAuthStateChange profile error:', err);
-          }
-        } else {
-          setUser(null);
-        }
-      },
-    );
-
     return () => {
       mounted = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -119,9 +140,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Sign out error:', e);
+    } finally {
+      setUser(null);
+      setSession(null);
+    }
   }, []);
 
   return (

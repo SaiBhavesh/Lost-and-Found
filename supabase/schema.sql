@@ -118,6 +118,52 @@ create table if not exists public.matches (
   unique (lost_item_id, found_item_id)
 );
 
+-- Trigger: whenever a new item is inserted, generate potential matches.
+create or replace function public.handle_new_item_matches()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  match_candidate record;
+  match_score int;
+  match_reason text;
+begin
+  for match_candidate in 
+    select * from public.items 
+    where type != new.type 
+      and category = new.category 
+      and status = 'open'
+  loop
+    match_score := 50; -- Base score for same category
+    match_reason := 'Category match. ';
+    
+    if match_candidate.location = new.location then
+      match_score := match_score + 30;
+      match_reason := match_reason || 'Same location.';
+    end if;
+    
+    -- insert the match
+    if new.type = 'lost' then
+      insert into public.matches (lost_item_id, found_item_id, score, reason)
+      values (new.id, match_candidate.id, match_score, trim(match_reason))
+      on conflict do nothing;
+    else
+      insert into public.matches (lost_item_id, found_item_id, score, reason)
+      values (match_candidate.id, new.id, match_score, trim(match_reason))
+      on conflict do nothing;
+    end if;
+  end loop;
+  
+  return new;
+end $$;
+
+drop trigger if exists on_item_created on public.items;
+create trigger on_item_created
+  after insert on public.items
+  for each row execute function public.handle_new_item_matches();
+
 -- ============================================================================
 -- 5. claims
 -- ============================================================================
