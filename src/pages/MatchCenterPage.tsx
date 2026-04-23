@@ -1,16 +1,29 @@
-import { mockMatches, mockItems } from '@/data/mock-data';
+import { useItems } from '@/hooks/use-items';
+import { useMatches } from '@/hooks/use-matches';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/EmptyState';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useNavigate } from 'react-router-dom';
-import { GitCompare } from 'lucide-react';
+import { GitCompare, Loader2 } from 'lucide-react';
 
 export default function MatchCenterPage() {
   const navigate = useNavigate();
+  const { data: matches = [], isLoading: matchesLoading } = useMatches();
+  const { data: items = [], isLoading: itemsLoading } = useItems();
 
-  if (mockMatches.length === 0) {
+  const loading = matchesLoading || itemsLoading;
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (matches.length === 0) {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold mb-4">Match Center</h1>
@@ -27,13 +40,13 @@ export default function MatchCenterPage() {
     <div className="p-6 max-w-4xl">
       <h1 className="text-xl font-semibold mb-1">Match Center</h1>
       <p className="text-sm text-muted-foreground mb-4">
-        {mockMatches.length} potential {mockMatches.length === 1 ? 'match' : 'matches'}
+        {matches.length} potential {matches.length === 1 ? 'match' : 'matches'}
       </p>
 
       <div className="space-y-3">
-        {mockMatches.map(match => {
-          const lost = mockItems.find(i => i.id === match.lostItemId);
-          const found = mockItems.find(i => i.id === match.foundItemId);
+        {matches.map(match => {
+          const lost = items.find(i => i.id === match.lostItemId);
+          const found = items.find(i => i.id === match.foundItemId);
           if (!lost || !found) return null;
 
           return (

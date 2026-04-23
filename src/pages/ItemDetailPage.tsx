@@ -1,13 +1,18 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { mockItems, mockMatches, mockUsers, CAMPUS_LOCATIONS, CATEGORY_LABELS, STATUS_LABELS } from '@/data/mock-data';
+import { useItem } from '@/hooks/use-items';
+import { useMatches } from '@/hooks/use-matches';
+import { useCreateClaim } from '@/hooks/use-claims';
+import { useAuth } from '@/contexts/AuthContext';
+import { fetchProfile } from '@/lib/supabase-data';
+import { CAMPUS_LOCATIONS, CATEGORY_LABELS, STATUS_LABELS } from '@/lib/constants';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, MapPin, Clock, Package, User, HandHeart } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Package, User as UserIcon, HandHeart, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,19 +20,47 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
+import type { User } from '@/lib/constants';
 
 export default function ItemDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { data: item, isLoading } = useItem(id);
+  const { data: allMatches = [] } = useMatches(id);
+  const createClaim = useCreateClaim();
+
   const [claimOpen, setClaimOpen] = useState(false);
   const [foundOpen, setFoundOpen] = useState(false);
-  const item = mockItems.find(i => i.id === id);
 
-  const [foundLocation, setFoundLocation] = useState<string>(item?.location ?? '');
+  const [reporter, setReporter] = useState<User | null>(null);
+  useEffect(() => {
+    if (item?.reporterId) {
+      fetchProfile(item.reporterId).then(setReporter);
+    }
+  }, [item?.reporterId]);
+
+  const [claimBrand, setClaimBrand] = useState('');
+  const [claimMarks, setClaimMarks] = useState('');
+  const [claimContents, setClaimContents] = useState('');
+
+  const [foundLocation, setFoundLocation] = useState<string>('');
   const [foundDate, setFoundDate] = useState('');
   const [foundNote, setFoundNote] = useState('');
   const [foundContact, setFoundContact] = useState<'email' | 'in_app'>('in_app');
   const [submittingFound, setSubmittingFound] = useState(false);
+
+  useEffect(() => {
+    if (item?.location) setFoundLocation(item.location);
+  }, [item?.location]);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!item) {
     return (
@@ -40,18 +73,39 @@ export default function ItemDetailPage() {
     );
   }
 
-  const reporter = mockUsers.find(u => u.id === item.reporterId);
-  const relatedMatches = mockMatches.filter(m => m.lostItemId === item.id || m.foundItemId === item.id);
+  const relatedMatches = allMatches;
 
   const statusSteps = ['open', 'potential_match', 'claimed', 'returned'] as const;
-  const currentStepIndex = statusSteps.indexOf(item.status as any);
+  const currentStepIndex = statusSteps.indexOf(item.status as typeof statusSteps[number]);
 
   const canReportFound =
     item.type === 'lost' && (item.status === 'open' || item.status === 'potential_match');
 
   const handleClaim = () => {
-    toast.success('Claim submitted! The finder will review your answers.');
-    setClaimOpen(false);
+    if (!user) return;
+    createClaim.mutate(
+      {
+        itemId: item.id,
+        claimerId: user.id,
+        verificationAnswers: {
+          brand: claimBrand,
+          uniqueMarks: claimMarks,
+          contents: claimContents,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success('Claim submitted! The finder will review your answers.');
+          setClaimOpen(false);
+          setClaimBrand('');
+          setClaimMarks('');
+          setClaimContents('');
+        },
+        onError: () => {
+          toast.error('Failed to submit claim. Please try again.');
+        },
+      },
+    );
   };
 
   const handleReportFound = (e: React.FormEvent) => {
@@ -61,6 +115,7 @@ export default function ItemDetailPage() {
       return;
     }
     setSubmittingFound(true);
+    // For now, show success — full match creation requires mod privileges
     setTimeout(() => {
       setSubmittingFound(false);
       setFoundOpen(false);
@@ -158,7 +213,7 @@ export default function ItemDetailPage() {
                 <Clock className="h-4 w-4" /><span>{format(parseISO(item.date), 'MMM d, yyyy h:mm a')}</span>
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
-                <User className="h-4 w-4" /><span>{reporter?.name || 'Unknown'}</span>
+                <UserIcon className="h-4 w-4" /><span>{reporter?.name || 'Unknown'}</span>
               </div>
             </div>
           </CardContent>
@@ -172,11 +227,10 @@ export default function ItemDetailPage() {
             <CardContent className="p-4 pt-0 space-y-2">
               {relatedMatches.map(match => {
                 const otherId = match.lostItemId === item.id ? match.foundItemId : match.lostItemId;
-                const other = mockItems.find(i => i.id === otherId);
                 return (
                   <div key={match.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <div>
-                      <p className="text-sm font-medium">{other?.title}</p>
+                      <p className="text-sm font-medium">Matched Item</p>
                       <p className="text-xs text-muted-foreground">{match.reason}</p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -202,17 +256,23 @@ export default function ItemDetailPage() {
           <div className="space-y-4 mt-4">
             <div className="space-y-1.5">
               <Label className="text-xs">What brand is this item?</Label>
-              <Input className="h-9 text-sm" placeholder="e.g. Apple, Nike, etc." />
+              <Input className="h-9 text-sm" placeholder="e.g. Apple, Nike, etc." value={claimBrand} onChange={e => setClaimBrand(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Describe any unique marks</Label>
-              <Input className="h-9 text-sm" placeholder="Scratches, stickers, engravings..." />
+              <Input className="h-9 text-sm" placeholder="Scratches, stickers, engravings..." value={claimMarks} onChange={e => setClaimMarks(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">What was inside (if bag/case)?</Label>
-              <Input className="h-9 text-sm" placeholder="Contents description" />
+              <Input className="h-9 text-sm" placeholder="Contents description" value={claimContents} onChange={e => setClaimContents(e.target.value)} />
             </div>
-            <Button onClick={handleClaim} className="w-full">Submit Claim</Button>
+            <Button onClick={handleClaim} className="w-full" disabled={createClaim.isPending}>
+              {createClaim.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting…</>
+              ) : (
+                'Submit Claim'
+              )}
+            </Button>
           </div>
         </SheetContent>
       </Sheet>

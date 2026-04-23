@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
-import { ItemStatus, STATUS_LABELS } from '@/data/mock-data';
+import { STATUS_LABELS } from '@/lib/constants';
+import type { ItemStatus } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 const statusStyles: Record<ItemStatus, string> = {

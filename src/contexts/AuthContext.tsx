@@ -1,52 +1,141 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { User, UserRole, mockUsers } from '@/data/mock-data';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
+import type { User as AppUser, UserRole } from '@/lib/constants';
+import type { Session, AuthError } from '@supabase/supabase-js';
 
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
+  session: Session | null;
   isAuthenticated: boolean;
-  login: (email: string) => boolean;
-  signup: (email: string, name: string) => boolean;
-  logout: () => void;
-  switchRole: (role: UserRole) => void;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ error: string | null }>;
+  signup: (email: string, name: string, password: string) => Promise<{ error: string | null }>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Fetch the user's profile from the `profiles` table.
+ * Returns null gracefully on any error (RLS, network, not-yet-created row).
+ * Retries once after a short delay to handle the race condition where
+ * the on_auth_user_created trigger hasn't finished inserting the row yet.
+ */
+async function fetchProfile(userId: string, retries = 1): Promise<AppUser | null> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, email, name, role, avatar')
+      .eq('id', userId)
+      .single();
+
+    if (error || !data) {
+      // If profile doesn't exist yet (trigger may still be running), retry once
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 500));
+        return fetchProfile(userId, retries - 1);
+      }
+      console.warn('Could not fetch profile:', error?.message);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      email: data.email,
+      name: data.name,
+      role: data.role as UserRole,
+      avatar: data.avatar ?? undefined,
+    };
+  } catch (err) {
+    console.warn('fetchProfile threw:', err);
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = (email: string) => {
-    if (!email.endsWith('@stevens.edu')) return false;
-    const found = mockUsers.find(u => u.email === email) || {
-      id: 'u_new',
-      email,
-      name: email.split('@')[0],
-      role: 'student' as UserRole,
+  // Listen for auth state changes and restore session on mount
+  useEffect(() => {
+    let mounted = true;
+
+    // Get the initial session
+    supabase.auth.getSession()
+      .then(async ({ data: { session: s } }) => {
+        if (!mounted) return;
+        setSession(s);
+        if (s?.user) {
+          const profile = await fetchProfile(s.user.id);
+          if (mounted) setUser(profile);
+        }
+      })
+      .catch((err) => {
+        console.error('getSession error:', err);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    // Subscribe to auth changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, s) => {
+        if (!mounted) return;
+        setSession(s);
+        if (s?.user) {
+          try {
+            const profile = await fetchProfile(s.user.id);
+            if (mounted) setUser(profile);
+          } catch (err) {
+            console.error('onAuthStateChange profile error:', err);
+          }
+        } else {
+          setUser(null);
+        }
+      },
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
     };
-    setUser(found);
-    return true;
-  };
+  }, []);
 
-  const signup = (email: string, name: string) => {
-    if (!email.endsWith('@stevens.edu')) return false;
-    const newUser: User = {
-      id: `u_${Date.now()}`,
+  const login = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: friendlyError(error) };
+    return { error: null };
+  }, []);
+
+  const signup = useCallback(async (email: string, name: string, password: string) => {
+    const { error } = await supabase.auth.signUp({
       email,
-      name: name.trim(),
-      role: 'student',
-    };
-    setUser(newUser);
-    return true;
-  };
+      password,
+      options: { data: { name } },
+    });
+    if (error) return { error: friendlyError(error) };
+    return { error: null };
+  }, []);
 
-  const logout = () => setUser(null);
-
-  const switchRole = (role: UserRole) => {
-    if (user) setUser({ ...user, role });
-  };
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, signup, logout, switchRole }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        isAuthenticated: !!session,
+        loading,
+        login,
+        signup,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -56,4 +145,14 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
+}
+
+/** Map Supabase auth errors to user-friendly messages */
+function friendlyError(err: AuthError): string {
+  const msg = err.message.toLowerCase();
+  if (msg.includes('invalid login')) return 'Invalid email or password.';
+  if (msg.includes('email not confirmed')) return 'Please confirm your email address first.';
+  if (msg.includes('already registered')) return 'An account with this email already exists.';
+  if (msg.includes('password')) return 'Password must be at least 6 characters.';
+  return err.message;
 }

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, ArrowLeft, CheckCircle2, Mail, Lock, User as UserIcon } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Mail, Lock, User as UserIcon, Loader2 } from 'lucide-react';
 
 export default function SignUpPage() {
   const { signup } = useAuth();
@@ -15,8 +15,9 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!name.trim()) {
@@ -35,8 +36,11 @@ export default function SignUpPage() {
       setError('Passwords do not match.');
       return;
     }
-    if (!signup(email, name)) {
-      setError('Could not create account. Please try again.');
+    setLoading(true);
+    const { error: authError } = await signup(email, name, password);
+    setLoading(false);
+    if (authError) {
+      setError(authError);
       return;
     }
     navigate('/app', { replace: true });
@@ -113,6 +117,7 @@ export default function SignUpPage() {
                       onChange={e => setName(e.target.value)}
                       className="pl-9"
                       autoFocus
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -128,6 +133,7 @@ export default function SignUpPage() {
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       className="pl-9"
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -143,6 +149,7 @@ export default function SignUpPage() {
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       className="pl-9"
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -158,6 +165,7 @@ export default function SignUpPage() {
                       value={confirm}
                       onChange={e => setConfirm(e.target.value)}
                       className="pl-9"
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -167,7 +175,16 @@ export default function SignUpPage() {
                     <AlertCircle className="h-3.5 w-3.5" />{error}
                   </p>
                 )}
-                <Button type="submit" className="w-full">Create account</Button>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating account…
+                    </>
+                  ) : (
+                    'Create account'
+                  )}
+                </Button>
               </form>
 
               <p className="text-center text-xs text-muted-foreground mt-6">

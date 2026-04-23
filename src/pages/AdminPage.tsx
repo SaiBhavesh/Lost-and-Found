@@ -1,19 +1,43 @@
-import { mockItems, mockClaims, mockUsers, STATUS_LABELS, CATEGORY_LABELS } from '@/data/mock-data';
+import { useItems, useUpdateItemStatus } from '@/hooks/use-items';
+import { useClaims } from '@/hooks/use-claims';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/StatusBadge';
+import { CATEGORY_LABELS } from '@/lib/constants';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Check, X } from 'lucide-react';
+import { Shield, Check, X, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { fetchProfile } from '@/lib/supabase-data';
+import type { User } from '@/lib/constants';
 
 export default function AdminPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { data: items = [], isLoading: itemsLoading } = useItems();
+  const { data: claims = [] } = useClaims();
+  const updateStatus = useUpdateItemStatus();
+
+  // Fetch all reporter profiles
+  const [profiles, setProfiles] = useState<Map<string, User>>(new Map());
+  useEffect(() => {
+    const reporterIds = [...new Set(items.map(i => i.reporterId))];
+    Promise.all(reporterIds.map(async id => {
+      const p = await fetchProfile(id);
+      return p ? [id, p] as const : null;
+    })).then(results => {
+      const map = new Map<string, User>();
+      for (const r of results) {
+        if (r) map.set(r[0], r[1]);
+      }
+      setProfiles(map);
+    });
+  }, [items]);
 
   if (user?.role !== 'admin' && user?.role !== 'moderator') {
     return (
@@ -24,15 +48,43 @@ export default function AdminPage() {
     );
   }
 
-  const pendingClaims = mockClaims.filter(c => c.status === 'pending');
-  const flaggedItems = mockItems.filter(i => i.status === 'open');
+  if (itemsLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const pendingClaims = claims.filter(c => c.status === 'pending');
+  const flaggedItems = items.filter(i => i.status === 'open');
 
   const stats = [
-    { label: 'Total Items', value: mockItems.length },
+    { label: 'Total Items', value: items.length },
     { label: 'Pending Claims', value: pendingClaims.length },
     { label: 'Open Items', value: flaggedItems.length },
-    { label: 'Returned', value: mockItems.filter(i => i.status === 'returned').length },
+    { label: 'Returned', value: items.filter(i => i.status === 'returned').length },
   ];
+
+  const handleApprove = (id: string) => {
+    updateStatus.mutate(
+      { id, status: 'returned' },
+      {
+        onSuccess: () => toast.success('Item approved'),
+        onError: () => toast.error('Failed to update item'),
+      },
+    );
+  };
+
+  const handleClose = (id: string) => {
+    updateStatus.mutate(
+      { id, status: 'closed' },
+      {
+        onSuccess: () => toast.success('Item closed'),
+        onError: () => toast.error('Failed to update item'),
+      },
+    );
+  };
 
   return (
     <div className="p-6 max-w-6xl">
@@ -65,8 +117,8 @@ export default function AdminPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockItems.map(item => {
-              const reporter = mockUsers.find(u => u.id === item.reporterId);
+            {items.map(item => {
+              const reporter = profiles.get(item.reporterId);
               return (
                 <TableRow key={item.id} className="cursor-pointer" onClick={() => navigate(`/app/item/${item.id}`)}>
                   <TableCell className="text-xs font-medium">{item.title}</TableCell>
@@ -78,13 +130,13 @@ export default function AdminPage() {
                   <TableCell className="text-xs">{CATEGORY_LABELS[item.category]}</TableCell>
                   <TableCell className="text-xs">{item.location}</TableCell>
                   <TableCell><StatusBadge status={item.status} /></TableCell>
-                  <TableCell className="text-xs">{reporter?.name}</TableCell>
+                  <TableCell className="text-xs">{reporter?.name ?? '—'}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => toast.success('Item approved')}>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleApprove(item.id)}>
                         <Check className="h-3.5 w-3.5 text-success" />
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => toast.success('Item closed')}>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleClose(item.id)}>
                         <X className="h-3.5 w-3.5 text-destructive" />
                       </Button>
                     </div>

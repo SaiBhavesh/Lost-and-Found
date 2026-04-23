@@ -1,10 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ItemCard } from '@/components/ItemCard';
+import { ItemCardSkeleton } from '@/components/ItemCardSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockItems, ItemType, ItemCategory, CATEGORY_LABELS, STATUS_LABELS, CAMPUS_LOCATIONS } from '@/data/mock-data';
+import { useItems } from '@/hooks/use-items';
+import { CATEGORY_LABELS, STATUS_LABELS, CAMPUS_LOCATIONS } from '@/lib/constants';
+import type { ItemType, ItemCategory } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Plus, X, Tag, Search } from 'lucide-react';
 
@@ -20,10 +23,11 @@ export default function ItemFeedPage({ type }: ItemFeedProps) {
   const [status, setStatus] = useState<string>('all');
   const [location, setLocation] = useState<string>('all');
 
+  const { data: allItems = [], isLoading } = useItems({ type });
+
   const items = useMemo(() => {
     const needle = q.toLowerCase();
-    return mockItems
-      .filter(i => i.type === type)
+    return allItems
       .filter(i => category === 'all' || i.category === category)
       .filter(i => status === 'all' || i.status === status)
       .filter(i => location === 'all' || i.location === location)
@@ -37,7 +41,7 @@ export default function ItemFeedPage({ type }: ItemFeedProps) {
         );
       })
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [type, category, status, location, q]);
+  }, [allItems, category, status, location, q]);
 
   const hasFilters = category !== 'all' || status !== 'all' || location !== 'all' || q !== '';
 
@@ -146,7 +150,11 @@ export default function ItemFeedPage({ type }: ItemFeedProps) {
         )}
       </div>
 
-      {items.length === 0 ? (
+      {isLoading ? (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => <ItemCardSkeleton key={i} />)}
+        </div>
+      ) : items.length === 0 ? (
         <EmptyState
           title={`No ${type} items found`}
           description={hasFilters ? 'Try adjusting your filters.' : `No reported ${type} items yet today.`}

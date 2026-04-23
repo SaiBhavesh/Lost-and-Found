@@ -1,7 +1,8 @@
 import { MapPin, Clock, Package } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/StatusBadge';
-import { Item, CATEGORY_LABELS } from '@/data/mock-data';
+import { CATEGORY_LABELS } from '@/lib/constants';
+import type { Item } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, ArrowLeft, Mail, Lock } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Mail, Lock, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -13,24 +13,27 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!email.endsWith('@stevens.edu')) {
       setError('Please use your @stevens.edu email address.');
       return;
     }
-    if (!login(email)) {
-      setError('Login failed. Please try again.');
+    if (!password) {
+      setError('Please enter your password.');
+      return;
+    }
+    setLoading(true);
+    const { error: authError } = await login(email, password);
+    setLoading(false);
+    if (authError) {
+      setError(authError);
       return;
     }
     navigate('/app', { replace: true });
-  };
-
-  const quickLogin = (email: string) => {
-    setEmail(email);
-    if (login(email)) navigate('/app', { replace: true });
   };
 
   return (
@@ -92,6 +95,7 @@ export default function LoginPage() {
                       onChange={e => setEmail(e.target.value)}
                       className="pl-9"
                       autoFocus
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -106,6 +110,7 @@ export default function LoginPage() {
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       className="pl-9"
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -114,32 +119,17 @@ export default function LoginPage() {
                     <AlertCircle className="h-3.5 w-3.5" />{error}
                   </p>
                 )}
-                <Button type="submit" className="w-full">Sign In</Button>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Signing in…
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
+                </Button>
               </form>
-
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                <div className="relative flex justify-center text-[11px] uppercase tracking-wider">
-                  <span className="bg-card px-2 text-muted-foreground">Quick demo login</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                {[
-                  { email: 'jdoe@stevens.edu', label: 'Student' },
-                  { email: 'asmith@stevens.edu', label: 'Moderator' },
-                  { email: 'admin@stevens.edu', label: 'Admin' },
-                ].map(u => (
-                  <button
-                    key={u.email}
-                    onClick={() => quickLogin(u.email)}
-                    className="text-xs text-left px-3 py-2 rounded-md border bg-card hover:bg-accent hover:border-primary/40 transition-all"
-                  >
-                    <span className="font-medium">{u.label}</span>
-                    <span className="text-muted-foreground"> — {u.email}</span>
-                  </button>
-                ))}
-              </div>
 
               <p className="text-center text-xs text-muted-foreground mt-6">
                 Don&apos;t have an account?{' '}

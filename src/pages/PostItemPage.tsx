@@ -7,13 +7,19 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { CAMPUS_LOCATIONS, CATEGORY_LABELS, ItemType } from '@/data/mock-data';
+import { CAMPUS_LOCATIONS, CATEGORY_LABELS } from '@/lib/constants';
+import type { ItemType } from '@/lib/constants';
+import { useCreateItem } from '@/hooks/use-items';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { ArrowLeft, Upload, X } from 'lucide-react';
+import { ArrowLeft, Upload, X, Loader2 } from 'lucide-react';
 
 export default function PostItemPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
+  const createItem = useCreateItem();
+
   const [type, setType] = useState<ItemType>((searchParams.get('type') as ItemType) || 'lost');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -21,18 +27,19 @@ export default function PostItemPage() {
   const [location, setLocation] = useState<string>('');
   const [date, setDate] = useState('');
   const [contact, setContact] = useState<'email' | 'in_app'>('email');
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
     Array.from(files).forEach(file => {
       if (!file.type.startsWith('image/')) return;
+      setPhotoFiles(prev => [...prev, file]);
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
-          setPhotos(prev => [...prev, e.target!.result as string]);
+          setPhotoPreviews(prev => [...prev, e.target!.result as string]);
         }
       };
       reader.readAsDataURL(file);
@@ -40,25 +47,49 @@ export default function PostItemPage() {
   };
 
   const removePhoto = (index: number) => {
-    setPhotos(prev => prev.filter((_, i) => i !== index));
+    setPhotoFiles(prev => prev.filter((_, i) => i !== index));
+    setPhotoPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !category || !location || !date) {
       toast.error('Please fill in all required fields.');
       return;
     }
-    if (photos.length === 0) {
+    if (photoFiles.length === 0) {
       toast.error('Please upload at least one photo.');
       return;
     }
-    setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      toast.success(`${type === 'lost' ? 'Lost' : 'Found'} item reported successfully!`);
-      navigate(type === 'lost' ? '/app/lost' : '/app/found');
-    }, 800);
+    if (!user) {
+      toast.error('You must be signed in to post.');
+      return;
+    }
+
+    createItem.mutate(
+      {
+        item: {
+          type,
+          title: title.trim(),
+          description: description.trim(),
+          category: category as Item['category'],
+          location,
+          date,
+          reporterId: user.id,
+          contactPreference: contact,
+        },
+        photoFiles,
+      },
+      {
+        onSuccess: () => {
+          toast.success(`${type === 'lost' ? 'Lost' : 'Found'} item reported successfully!`);
+          navigate(type === 'lost' ? '/app/lost' : '/app/found');
+        },
+        onError: (err) => {
+          toast.error(`Failed to post item: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        },
+      },
+    );
   };
 
   return (
@@ -132,9 +163,9 @@ export default function PostItemPage() {
                 className="hidden"
                 onChange={e => handleFiles(e.target.files)}
               />
-              {photos.length > 0 && (
+              {photoPreviews.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {photos.map((src, idx) => (
+                  {photoPreviews.map((src, idx) => (
                     <div key={idx} className="relative group w-20 h-20 rounded-lg overflow-hidden border">
                       <img src={src} alt={`Upload ${idx + 1}`} className="w-full h-full object-cover" />
                       <button
@@ -174,7 +205,13 @@ export default function PostItemPage() {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <Button type="submit" disabled={submitting}>{submitting ? 'Submitting...' : 'Submit Report'}</Button>
+              <Button type="submit" disabled={createItem.isPending}>
+                {createItem.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading…</>
+                ) : (
+                  'Submit Report'
+                )}
+              </Button>
               <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
             </div>
           </form>
@@ -183,3 +220,6 @@ export default function PostItemPage() {
     </div>
   );
 }
+
+// Local type import for the mutation parameter
+import type { Item } from '@/lib/constants';

@@ -1,6 +1,7 @@
-import { mockItems } from '@/data/mock-data';
+import { useItems } from '@/hooks/use-items';
 import { useAuth } from '@/contexts/AuthContext';
 import { ItemCard } from '@/components/ItemCard';
+import { ItemCardSkeleton } from '@/components/ItemCardSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { useNavigate } from 'react-router-dom';
 import { FileText } from 'lucide-react';
@@ -8,14 +9,18 @@ import { FileText } from 'lucide-react';
 export default function MyPostsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const myItems = mockItems.filter(i => i.reporterId === user?.id);
+  const { data: myItems = [], isLoading } = useItems({ reporterId: user?.id });
 
   return (
     <div className="p-6 max-w-4xl">
       <h1 className="text-xl font-semibold mb-1">My Posts</h1>
       <p className="text-sm text-muted-foreground mb-4">{myItems.length} items you've reported</p>
 
-      {myItems.length === 0 ? (
+      {isLoading ? (
+        <div className="grid sm:grid-cols-2 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => <ItemCardSkeleton key={i} />)}
+        </div>
+      ) : myItems.length === 0 ? (
         <EmptyState
           title="No posts yet"
           description="Items you report as lost or found will show up here."

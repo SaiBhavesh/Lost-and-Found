@@ -10,12 +10,9 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import mapLight from '@/assets/map/campus_map_light.png';
 import mapDark from '@/assets/map/campus_map_dark.png';
-import {
-  mockItems,
-  CATEGORY_LABELS,
-  ItemCategory,
-  ItemType,
-} from '@/data/mock-data';
+import { useItems } from '@/hooks/use-items';
+import { CATEGORY_LABELS } from '@/lib/constants';
+import type { ItemCategory, ItemType } from '@/lib/constants';
 
 type BuildingKey =
   | 'Schaefer Athletic Center'
@@ -50,11 +47,13 @@ export default function CampusMapPage() {
   const [categoryFilter, setCategoryFilter] = useState<'all' | ItemCategory>('all');
   const [activeBuilding, setActiveBuilding] = useState<BuildingKey | null>(null);
 
+  const { data: allItems = [] } = useItems();
+
   const filteredItems = useMemo(() => {
-    return mockItems
+    return allItems
       .filter(i => typeFilter === 'all' || i.type === typeFilter)
       .filter(i => categoryFilter === 'all' || i.category === categoryFilter);
-  }, [typeFilter, categoryFilter]);
+  }, [allItems, typeFilter, categoryFilter]);
 
   const itemsByBuilding = useMemo(() => {
     const map = new Map<BuildingKey, { lost: number; found: number }>();

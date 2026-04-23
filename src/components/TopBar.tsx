@@ -11,16 +11,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { mockNotifications, mockItems, CATEGORY_LABELS } from '@/data/mock-data';
-import type { UserRole } from '@/data/mock-data';
+import { useNotifications } from '@/hooks/use-notifications';
+import { useItems } from '@/hooks/use-items';
+import { CATEGORY_LABELS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 export function TopBar() {
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const unreadCount = mockNotifications.filter(n => n.userId === user?.id && !n.read).length;
+  const { data: notifications = [] } = useNotifications();
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const { data: allItems = [] } = useItems();
 
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -43,7 +47,7 @@ export function TopBar() {
   const suggestions = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return mockItems
+    return allItems
       .filter(i =>
         i.title.toLowerCase().includes(q) ||
         i.description.toLowerCase().includes(q) ||
@@ -51,7 +55,7 @@ export function TopBar() {
         CATEGORY_LABELS[i.category].toLowerCase().includes(q),
       )
       .slice(0, 6);
-  }, [query]);
+  }, [query, allItems]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,8 +66,8 @@ export function TopBar() {
     setOpen(false);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/', { replace: true });
   };
 
@@ -196,13 +200,6 @@ export function TopBar() {
               </div>
               <Badge variant="secondary" className="mt-2 text-[10px] px-1.5 capitalize">{user?.role}</Badge>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Switch role (demo)</DropdownMenuLabel>
-            {(['student', 'moderator', 'admin'] as UserRole[]).map(role => (
-              <DropdownMenuItem key={role} onClick={() => switchRole(role)} className="text-xs capitalize">
-                {role} {user?.role === role && '✓'}
-              </DropdownMenuItem>
-            ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-xs text-destructive">
               <LogOut className="h-3.5 w-3.5 mr-2" />Sign out

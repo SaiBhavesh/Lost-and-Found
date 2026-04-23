@@ -18,8 +18,28 @@ import MyPostsPage from "@/pages/MyPostsPage";
 import CampusMapPage from "@/pages/CampusMapPage";
 import AdminPage from "@/pages/AdminPage";
 import NotFound from "@/pages/NotFound";
+import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
+
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center shadow-sm">
+            <span className="text-primary-foreground font-bold text-lg">S</span>
+          </div>
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
 
 function PublicOnly({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -41,34 +61,36 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              {/* Public */}
-              <Route path="/" element={<PublicOnly><LandingPage /></PublicOnly>} />
-              <Route path="/login" element={<PublicOnly><LoginPage /></PublicOnly>} />
-              <Route path="/signup" element={<PublicOnly><SignUpPage /></PublicOnly>} />
+            <AuthGate>
+              <Routes>
+                {/* Public */}
+                <Route path="/" element={<PublicOnly><LandingPage /></PublicOnly>} />
+                <Route path="/login" element={<PublicOnly><LoginPage /></PublicOnly>} />
+                <Route path="/signup" element={<PublicOnly><SignUpPage /></PublicOnly>} />
 
-              {/* Authenticated app */}
-              <Route
-                path="/app"
-                element={
-                  <RequireAuth>
-                    <AppLayout />
-                  </RequireAuth>
-                }
-              >
-                <Route index element={<DashboardPage />} />
-                <Route path="lost" element={<ItemFeedPage type="lost" />} />
-                <Route path="found" element={<ItemFeedPage type="found" />} />
-                <Route path="post" element={<PostItemPage />} />
-                <Route path="item/:id" element={<ItemDetailPage />} />
-                <Route path="map" element={<CampusMapPage />} />
-                <Route path="matches" element={<MatchCenterPage />} />
-                <Route path="my-posts" element={<MyPostsPage />} />
-                <Route path="admin" element={<AdminPage />} />
-              </Route>
+                {/* Authenticated app */}
+                <Route
+                  path="/app"
+                  element={
+                    <RequireAuth>
+                      <AppLayout />
+                    </RequireAuth>
+                  }
+                >
+                  <Route index element={<DashboardPage />} />
+                  <Route path="lost" element={<ItemFeedPage type="lost" />} />
+                  <Route path="found" element={<ItemFeedPage type="found" />} />
+                  <Route path="post" element={<PostItemPage />} />
+                  <Route path="item/:id" element={<ItemDetailPage />} />
+                  <Route path="map" element={<CampusMapPage />} />
+                  <Route path="matches" element={<MatchCenterPage />} />
+                  <Route path="my-posts" element={<MyPostsPage />} />
+                  <Route path="admin" element={<AdminPage />} />
+                </Route>
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AuthGate>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

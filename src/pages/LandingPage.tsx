@@ -5,7 +5,7 @@ import {
   Search, MapPin, GitCompare, Shield, Sparkles, ArrowRight,
   Package, Users, Clock, CheckCircle2, Mail, Bell, Moon, Sun,
 } from 'lucide-react';
-import { mockItems, mockUsers, CAMPUS_LOCATIONS } from '@/data/mock-data';
+import { CAMPUS_LOCATIONS } from '@/lib/constants';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const features = [
@@ -58,10 +58,10 @@ export default function LandingPage() {
   const { theme, toggleTheme } = useTheme();
 
   const stats = [
-    { label: 'Items Reunited', value: mockItems.filter(i => i.status === 'returned').length + 142, icon: CheckCircle2 },
-    { label: 'Active Listings', value: mockItems.filter(i => i.status === 'open').length + 38, icon: Package },
+    { label: 'Items Reunited', value: 143, icon: CheckCircle2 },
+    { label: 'Active Listings', value: 42, icon: Package },
     { label: 'Campus Spots', value: CAMPUS_LOCATIONS.length, icon: MapPin },
-    { label: 'Members', value: mockUsers.length + 1248, icon: Users },
+    { label: 'Members', value: 1253, icon: Users },
   ];
 
   return (

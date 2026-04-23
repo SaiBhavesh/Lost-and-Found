@@ -2,53 +2,65 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ItemCard } from '@/components/ItemCard';
+import { ItemCardSkeleton } from '@/components/ItemCardSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockItems, mockMatches, CATEGORY_LABELS } from '@/data/mock-data';
-import type { ItemCategory } from '@/data/mock-data';
+import { useItems } from '@/hooks/use-items';
+import { useMatches } from '@/hooks/use-matches';
+import { CATEGORY_LABELS } from '@/lib/constants';
+import type { ItemCategory } from '@/lib/constants';
 import {
   Search, MapPin, TrendingUp, Clock, Plus, Sparkles,
   ArrowRight, Package, CheckCircle2,
 } from 'lucide-react';
 
-const kpis = [
-  {
-    label: 'Open Items',
-    getValue: () => mockItems.filter(i => i.status === 'open').length,
-    icon: Search,
-    tint: 'from-sky-500/15 to-sky-500/0 text-sky-600 dark:text-sky-400',
-    ring: 'ring-sky-500/20',
-  },
-  {
-    label: 'Pending Matches',
-    getValue: () => mockMatches.filter(m => m.status === 'pending').length,
-    icon: TrendingUp,
-    tint: 'from-amber-500/15 to-amber-500/0 text-amber-600 dark:text-amber-400',
-    ring: 'ring-amber-500/20',
-  },
-  {
-    label: 'Returned This Week',
-    getValue: () => mockItems.filter(i => i.status === 'returned').length,
-    icon: CheckCircle2,
-    tint: 'from-emerald-500/15 to-emerald-500/0 text-emerald-600 dark:text-emerald-400',
-    ring: 'ring-emerald-500/20',
-  },
-  {
-    label: 'Avg Return Time',
-    getValue: () => '2.3d',
-    icon: Clock,
-    tint: 'from-primary/15 to-primary/0 text-primary',
-    ring: 'ring-primary/20',
-  },
-];
-
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const recentItems = [...mockItems].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4);
+  const { data: items = [], isLoading: itemsLoading } = useItems();
+  const { data: matches = [], isLoading: matchesLoading } = useMatches();
+
+  const loading = itemsLoading || matchesLoading;
+
+  const openCount = items.filter(i => i.status === 'open').length;
+  const pendingMatchCount = matches.filter(m => m.status === 'pending').length;
+  const returnedCount = items.filter(i => i.status === 'returned').length;
+
+  const kpis = [
+    {
+      label: 'Open Items',
+      value: openCount,
+      icon: Search,
+      tint: 'from-sky-500/15 to-sky-500/0 text-sky-600 dark:text-sky-400',
+      ring: 'ring-sky-500/20',
+    },
+    {
+      label: 'Pending Matches',
+      value: pendingMatchCount,
+      icon: TrendingUp,
+      tint: 'from-amber-500/15 to-amber-500/0 text-amber-600 dark:text-amber-400',
+      ring: 'ring-amber-500/20',
+    },
+    {
+      label: 'Returned This Week',
+      value: returnedCount,
+      icon: CheckCircle2,
+      tint: 'from-emerald-500/15 to-emerald-500/0 text-emerald-600 dark:text-emerald-400',
+      ring: 'ring-emerald-500/20',
+    },
+    {
+      label: 'Total Items',
+      value: items.length,
+      icon: Clock,
+      tint: 'from-primary/15 to-primary/0 text-primary',
+      ring: 'ring-primary/20',
+    },
+  ];
+
+  const recentItems = [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4);
 
   const categoryCounts = (Object.keys(CATEGORY_LABELS) as ItemCategory[]).map(cat => ({
     category: cat,
-    count: mockItems.filter(i => i.category === cat).length,
+    count: items.filter(i => i.category === cat).length,
   }));
 
   const firstName = user?.name?.split(' ')[0] || 'there';
@@ -72,7 +84,7 @@ export default function DashboardPage() {
                 Hey {firstName}, let&apos;s find something today
               </h1>
               <p className="text-sm text-muted-foreground">
-                {mockItems.filter(i => i.status === 'open').length} open items on campus right now.
+                {openCount} open items on campus right now.
               </p>
             </div>
             <div className="flex gap-2 shrink-0">
@@ -97,7 +109,9 @@ export default function DashboardPage() {
                 <span className="text-xs text-muted-foreground font-medium">{kpi.label}</span>
                 <kpi.icon className="h-4 w-4" />
               </div>
-              <p className="text-3xl font-bold tracking-tight">{kpi.getValue()}</p>
+              <p className="text-3xl font-bold tracking-tight">
+                {loading ? '—' : kpi.value}
+              </p>
             </CardContent>
           </Card>
         ))}
@@ -113,9 +127,10 @@ export default function DashboardPage() {
             </Button>
           </div>
           <div className="grid sm:grid-cols-2 gap-3">
-            {recentItems.map(item => (
-              <ItemCard key={item.id} item={item} />
-            ))}
+            {loading
+              ? Array.from({ length: 4 }).map((_, i) => <ItemCardSkeleton key={i} />)
+              : recentItems.map(item => <ItemCard key={item.id} item={item} />)
+            }
           </div>
         </div>
 
@@ -124,7 +139,7 @@ export default function DashboardPage() {
           <Card>
             <CardContent className="p-4 space-y-3">
               {categoryCounts.map(({ category, count }) => {
-                const pct = Math.min(100, (count / Math.max(1, mockItems.length)) * 100);
+                const pct = Math.min(100, (count / Math.max(1, items.length)) * 100);
                 return (
                   <button
                     key={category}
