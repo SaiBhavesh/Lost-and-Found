@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Link kept for Sign up link below
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,10 +18,6 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!email.endsWith('@stevens.edu')) {
-      setError('Please use your @stevens.edu email address.');
-      return;
-    }
     if (!password) {
       setError('Please enter your password.');
       return;
@@ -37,32 +33,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-background">
-      {/* Left: gradient panel */}
-      <div className="relative hidden lg:flex flex-col justify-between p-12 bg-gradient-to-br from-primary via-rose-700 to-amber-700 text-white overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none opacity-40">
-          <div className="absolute -top-20 -left-20 h-80 w-80 rounded-full bg-white/20 blur-3xl" />
-          <div className="absolute bottom-10 right-0 h-80 w-80 rounded-full bg-amber-300/30 blur-3xl" />
-        </div>
-        <Link to="/" className="relative flex items-center gap-2 text-sm hover:opacity-80 transition-opacity">
-          <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
-            <span className="font-bold">S</span>
-          </div>
-          <span className="font-semibold">Stevens Lost &amp; Found</span>
-        </Link>
-        <div className="relative">
-          <p className="text-3xl font-semibold leading-tight mb-4">
-            &ldquo;Found my laptop within two hours of posting. This app is a lifesaver.&rdquo;
-          </p>
-          <p className="text-sm text-white/80">— Maria G., SSE &apos;26</p>
-        </div>
-        <div className="relative text-xs text-white/70">
-          © {new Date().getFullYear()} Stevens Institute of Technology
-        </div>
-      </div>
-
-      {/* Right: form */}
-      <div className="flex items-center justify-center p-6 sm:p-12">
+    <div className="min-h-screen bg-background">
+      <div className="flex items-center justify-center p-6 sm:p-12 min-h-screen">
         <div className="w-full max-w-sm">
           <Button
             variant="ghost"

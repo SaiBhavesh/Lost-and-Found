@@ -60,10 +60,6 @@ as $$
 declare
   display_name text;
 begin
-  if new.email is null or position('@stevens.edu' in lower(new.email)) = 0 then
-    raise exception 'Only @stevens.edu emails are allowed';
-  end if;
-
   display_name := coalesce(
     nullif(new.raw_user_meta_data->>'name', ''),
     split_part(new.email, '@', 1)

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, Moon, Sun, LogOut, ChevronDown, Search, Plus, X, Package, MapPin, MessageSquare } from 'lucide-react';
+import { Bell, Moon, Sun, LogOut, ChevronDown, Search, Plus, X, Package, MapPin, MessageSquare, Sparkles, Loader2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,50 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useUnreadChatCount } from '@/hooks/use-chat';
 import { useItems } from '@/hooks/use-items';
-import { CATEGORY_LABELS } from '@/lib/constants';
+import { CATEGORY_LABELS, CAMPUS_LOCATIONS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { groq, GROQ_MODEL } from '@/lib/groq';
+import { toast } from 'sonner';
+
+interface AISearchResult {
+  type?: 'lost' | 'found';
+  query: string;
+  location?: string;
+  category?: string;
+}
+
+async function parseNaturalSearch(text: string): Promise<AISearchResult> {
+  const locationList = CAMPUS_LOCATIONS.join(', ');
+  const categoryList = Object.entries(CATEGORY_LABELS)
+    .map(([k, v]) => `${k} (${v})`)
+    .join(', ');
+
+  const completion = await groq.chat.completions.create({
+    model: GROQ_MODEL,
+    messages: [
+      {
+        role: 'system',
+        content: `You extract structured search parameters from a natural-language lost-and-found query.
+Return ONLY valid JSON with these optional fields:
+- "type": "lost" | "found" (omit if unclear)
+- "query": string (key search terms, e.g. "blue backpack")
+- "location": one of [${locationList}] (omit if not mentioned)
+- "category": one of [${Object.keys(CATEGORY_LABELS).join(', ')}] (omit if unclear)
+No explanation, just the JSON object.`,
+      },
+      { role: 'user', content: text },
+    ],
+    max_tokens: 80,
+    temperature: 0,
+  });
+
+  const raw = completion.choices[0]?.message?.content?.trim() ?? '{}';
+  try {
+    return JSON.parse(raw) as AISearchResult;
+  } catch {
+    return { query: text };
+  }
+}
 
 export function TopBar() {
   const { user, logout } = useAuth();
@@ -30,6 +72,7 @@ export function TopBar() {
 
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
+  const [aiSearching, setAiSearching] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,6 +111,30 @@ export function TopBar() {
     setOpen(false);
   };
 
+  const handleAISearch = async () => {
+    const q = query.trim();
+    if (!q) {
+      toast.info('Type a natural-language query first, e.g. "lost black umbrella near library"');
+      return;
+    }
+    setAiSearching(true);
+    setOpen(false);
+    try {
+      const result = await parseNaturalSearch(q);
+      const type = result.type ?? (location.pathname.startsWith('/app/found') ? 'found' : 'lost');
+      const params = new URLSearchParams();
+      if (result.query) params.set('q', result.query);
+      if (result.location) params.set('location', result.location);
+      if (result.category) params.set('category', result.category);
+      navigate(`/app/${type}?${params.toString()}`);
+      toast.success(`AI search: ${type} items${result.location ? ` · ${result.location}` : ''}${result.category ? ` · ${CATEGORY_LABELS[result.category as keyof typeof CATEGORY_LABELS] ?? result.category}` : ''}`);
+    } catch {
+      toast.error('AI search failed. Check your Groq API key.');
+    } finally {
+      setAiSearching(false);
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate('/', { replace: true });
@@ -87,10 +154,21 @@ export function TopBar() {
           value={query}
           onChange={e => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => { if (query) setOpen(true); }}
-          placeholder="Search items, locations, categories..."
-          className="w-72 lg:w-96 h-9 pl-9 pr-9 bg-background/60 text-sm"
+          placeholder='Search or ask AI: "lost keys near library"…'
+          className="w-72 lg:w-96 h-9 pl-9 pr-16 bg-background/60 text-sm"
           aria-label="Search items"
         />
+        {/* AI search button */}
+        <button
+          type="button"
+          aria-label="AI search"
+          onClick={handleAISearch}
+          disabled={aiSearching}
+          title="Parse with AI"
+          className="absolute right-8 top-1/2 -translate-y-1/2 h-6 w-6 inline-flex items-center justify-center rounded hover:bg-muted text-primary disabled:opacity-50"
+        >
+          {aiSearching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+        </button>
         {query && (
           <button
             type="button"

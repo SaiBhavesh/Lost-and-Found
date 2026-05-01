@@ -19,9 +19,14 @@ export default function ItemFeedPage({ type }: ItemFeedProps) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get('q')?.trim() ?? '';
-  const [category, setCategory] = useState<string>('all');
+
+  // AI search can pre-populate location/category via URL params
+  const aiLocation = searchParams.get('location')?.trim() ?? '';
+  const aiCategory = searchParams.get('category')?.trim() ?? '';
+
+  const [category, setCategory] = useState<string>(aiCategory || 'all');
   const [status, setStatus] = useState<string>('all');
-  const [location, setLocation] = useState<string>('all');
+  const [location, setLocation] = useState<string>(aiLocation || 'all');
 
   const { data: allItems = [], isLoading } = useItems({ type });
 
@@ -43,17 +48,17 @@ export default function ItemFeedPage({ type }: ItemFeedProps) {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [allItems, category, status, location, q]);
 
-  const hasFilters = category !== 'all' || status !== 'all' || location !== 'all' || q !== '';
+  const hasFilters = category !== 'all' || status !== 'all' || location !== 'all' || q !== '' || !!aiLocation || !!aiCategory;
 
   const clearFilters = () => {
     setCategory('all');
     setStatus('all');
     setLocation('all');
-    if (q) {
-      const next = new URLSearchParams(searchParams);
-      next.delete('q');
-      setSearchParams(next, { replace: true });
-    }
+    const next = new URLSearchParams(searchParams);
+    next.delete('q');
+    next.delete('location');
+    next.delete('category');
+    setSearchParams(next, { replace: true });
   };
 
   const clearQuery = () => {

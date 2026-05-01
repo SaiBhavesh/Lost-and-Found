@@ -13,7 +13,7 @@ import mapLight from '@/assets/map/campus_map_light.png';
 import mapDark from '@/assets/map/campus_map_dark.png';
 import {
   Search, MapPin, TrendingUp, Clock, Plus, Sparkles,
-  ArrowRight, Package, CheckCircle2,
+  ArrowRight, Package, CheckCircle2, Bot, Wand2, Brain,
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -99,6 +99,51 @@ export default function DashboardPage() {
                 <Plus className="h-4 w-4 mr-1.5" />Report Lost
               </Button>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Features Banner */}
+      <Card className="border-violet-500/30 bg-gradient-to-br from-violet-500/10 via-background to-indigo-500/10 overflow-hidden">
+        <CardContent className="p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-7 w-7 rounded-lg bg-violet-500/20 flex items-center justify-center">
+              <Brain className="h-4 w-4 text-violet-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Powered by Groq AI</p>
+              <p className="text-[11px] text-muted-foreground">llama-3.3-70b-versatile — ultra-fast inference</p>
+            </div>
+            <span className="ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/20">3 AI Features</span>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <button
+              onClick={() => document.querySelector<HTMLButtonElement>('[aria-label="Open AI assistant"]')?.click()}
+              className="group text-left p-3 rounded-xl bg-background/60 border border-border/60 hover:border-violet-500/40 hover:bg-violet-500/5 transition-all"
+            >
+              <Bot className="h-5 w-5 text-violet-500 mb-2" />
+              <p className="text-xs font-semibold mb-0.5">Campus AI Assistant</p>
+              <p className="text-[11px] text-muted-foreground">Ask anything about lost items, claiming, or campus locations.</p>
+              <p className="text-[10px] text-violet-500 mt-2 font-medium group-hover:underline">Try it →</p>
+            </button>
+            <button
+              onClick={() => navigate('/app/post')}
+              className="group text-left p-3 rounded-xl bg-background/60 border border-border/60 hover:border-violet-500/40 hover:bg-violet-500/5 transition-all"
+            >
+              <Wand2 className="h-5 w-5 text-violet-500 mb-2" />
+              <p className="text-xs font-semibold mb-0.5">Smart Description</p>
+              <p className="text-[11px] text-muted-foreground">AI writes your item description — just enter a title.</p>
+              <p className="text-[10px] text-violet-500 mt-2 font-medium group-hover:underline">Report an item →</p>
+            </button>
+            <button
+              onClick={() => navigate('/app/lost')}
+              className="group text-left p-3 rounded-xl bg-background/60 border border-border/60 hover:border-violet-500/40 hover:bg-violet-500/5 transition-all"
+            >
+              <Sparkles className="h-5 w-5 text-violet-500 mb-2" />
+              <p className="text-xs font-semibold mb-0.5">AI Natural Search</p>
+              <p className="text-[11px] text-muted-foreground">Type "lost blue bag near library" — AI filters for you.</p>
+              <p className="text-[10px] text-violet-500 mt-2 font-medium group-hover:underline">Search items →</p>
+            </button>
           </div>
         </CardContent>
       </Card>

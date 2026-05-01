@@ -1,11 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { User as AppUser, UserRole } from '@/lib/constants';
-import type { Session, AuthError } from '@supabase/supabase-js';
+import type { User, UserRole } from '@/lib/constants';
+
+interface StoredUser {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  password: string;
+}
 
 interface AuthContextType {
-  user: AppUser | null;
-  session: Session | null;
+  user: User | null;
+  session: { userId: string } | null;
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -15,153 +21,81 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/**
- * Fetch the user's profile from the `profiles` table.
- * Returns null gracefully on any error (RLS, network, not-yet-created row).
- * Retries once after a short delay to handle the race condition where
- * the on_auth_user_created trigger hasn't finished inserting the row yet.
- */
-async function fetchProfile(userId: string, retries = 1): Promise<AppUser | null> {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, email, name, role, avatar')
-      .eq('id', userId)
-      .single();
+const USERS_KEY = 'laf_users';
+const SESSION_KEY = 'laf_session';
 
-    if (error || !data) {
-      // If profile doesn't exist yet (trigger may still be running), retry once
-      if (retries > 0) {
-        await new Promise(r => setTimeout(r, 500));
-        return fetchProfile(userId, retries - 1);
-      }
-      console.warn('Could not fetch profile:', error?.message);
-      return null;
-    }
+function getStoredUsers(): StoredUser[] {
+  try { return JSON.parse(localStorage.getItem(USERS_KEY) ?? '[]'); } catch { return []; }
+}
 
-    return {
-      id: data.id,
-      email: data.email,
-      name: data.name,
-      role: data.role as UserRole,
-      avatar: data.avatar ?? undefined,
-    };
-  } catch (err) {
-    console.warn('fetchProfile threw:', err);
-    return null;
-  }
+function saveUsers(users: StoredUser[]) {
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
+
+function getSession(): string | null {
+  return localStorage.getItem(SESSION_KEY);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AppUser | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Listen for auth state changes and restore session on mount
   useEffect(() => {
-    let mounted = true;
-
-    // Safety timeout: absolutely ensure we never get stuck on the loading screen
-    const safetyTimeout = setTimeout(() => {
-      if (mounted && loading) {
-        setLoading(false);
+    const userId = getSession();
+    if (userId) {
+      const users = getStoredUsers();
+      const found = users.find(u => u.id === userId);
+      if (found) {
+        setUser({ id: found.id, email: found.email, name: found.name, role: found.role });
       }
-    }, 2000);
-
-    const loadSessionAndProfile = async (s: Session | null) => {
-      if (!mounted) return;
-      setSession(s);
-      
-      // Stop blocking the UI immediately! We don't need the profile to show the app shell.
-      setLoading(false);
-
-      if (s?.user) {
-        try {
-          const profile = await fetchProfile(s.user.id);
-          if (mounted) {
-            setUser(profile);
-          }
-        } catch (err) {
-          console.error('Profile fetch error:', err);
-        }
-      } else {
-        if (mounted) setUser(null);
-      }
-    };
-
-    // We can rely primarily on onAuthStateChange since it fires an INITIAL_SESSION event
-    // immediately upon subscription in supabase-js v2.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, s) => {
-        loadSessionAndProfile(s);
-      },
-    );
-
-    // As a fallback, in case onAuthStateChange takes too long or misses the initial event,
-    // we also call getSession and stop loading if there's no session.
-    supabase.auth.getSession()
-      .then(({ data: { session: s }, error }) => {
-        if (error) console.error('getSession error:', error);
-        if (mounted) {
-          // Only fetch if we haven't already populated the user to avoid double fetches
-          if (s && !user) {
-             loadSessionAndProfile(s);
-          } else {
-             setLoading(false);
-          }
-        }
-      })
-      .catch((err) => {
-        console.error('getSession error:', err);
-        if (mounted) setLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-      clearTimeout(safetyTimeout);
-      subscription.unsubscribe();
-    };
+    }
+    setLoading(false);
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: friendlyError(error) };
+    const users = getStoredUsers();
+    const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!found) return { error: 'No account found with this email. Please sign up first.' };
+    if (found.password !== password) return { error: 'Invalid email or password.' };
+    localStorage.setItem(SESSION_KEY, found.id);
+    setUser({ id: found.id, email: found.email, name: found.name, role: found.role });
     return { error: null };
   }, []);
 
   const signup = useCallback(async (email: string, name: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
+    if (password.length < 6) return { error: 'Password must be at least 6 characters.' };
+    const users = getStoredUsers();
+    if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
+      return { error: 'An account with this email already exists.' };
+    }
+    const newUser: StoredUser = {
+      id: crypto.randomUUID(),
+      email: email.toLowerCase(),
+      name: name || email.split('@')[0],
+      role: 'student',
       password,
-      options: { data: { name } },
-    });
-    if (error) return { error: friendlyError(error) };
+    };
+    saveUsers([...users, newUser]);
+    localStorage.setItem(SESSION_KEY, newUser.id);
+    setUser({ id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role });
     return { error: null };
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.error('Sign out error:', e);
-    } finally {
-      setUser(null);
-      setSession(null);
-    }
+    localStorage.removeItem(SESSION_KEY);
+    setUser(null);
   }, []);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        isAuthenticated: !!session,
-        loading,
-        login,
-        signup,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      session: user ? { userId: user.id } : null,
+      isAuthenticated: !!user,
+      loading,
+      login,
+      signup,
+      logout,
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -171,14 +105,4 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
-}
-
-/** Map Supabase auth errors to user-friendly messages */
-function friendlyError(err: AuthError): string {
-  const msg = err.message.toLowerCase();
-  if (msg.includes('invalid login')) return 'Invalid email or password.';
-  if (msg.includes('email not confirmed')) return 'Please confirm your email address first.';
-  if (msg.includes('already registered')) return 'An account with this email already exists.';
-  if (msg.includes('password')) return 'Password must be at least 6 characters.';
-  return err.message;
 }

@@ -12,7 +12,8 @@ import type { ItemType } from '@/lib/constants';
 import { useCreateItem } from '@/hooks/use-items';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { ArrowLeft, Upload, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Upload, X, Loader2, Sparkles } from 'lucide-react';
+import { groq, GROQ_MODEL } from '@/lib/groq';
 
 export default function PostItemPage() {
   const navigate = useNavigate();
@@ -30,6 +31,41 @@ export default function PostItemPage() {
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [generatingDesc, setGeneratingDesc] = useState(false);
+
+  const generateDescription = async () => {
+    if (!title.trim()) {
+      toast.error('Enter a title first so AI has something to work with.');
+      return;
+    }
+    setGeneratingDesc(true);
+    try {
+      const completion = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You write concise, helpful item descriptions for a university lost-and-found platform. ' +
+              'Focus on physical details, distinctive features, and any useful identifiers. ' +
+              'Keep it under 60 words. Return only the description text, no labels or preamble.',
+          },
+          {
+            role: 'user',
+            content: `Write a description for this ${type} item report:\nTitle: ${title}${category ? `\nCategory: ${CATEGORY_LABELS[category as keyof typeof CATEGORY_LABELS] ?? category}` : ''}${location ? `\nLocation: ${location}` : ''}`,
+          },
+        ],
+        max_tokens: 120,
+        temperature: 0.7,
+      });
+      const text = completion.choices[0]?.message?.content?.trim();
+      if (text) setDescription(text);
+    } catch {
+      toast.error('Failed to generate description. Check your Groq API key.');
+    } finally {
+      setGeneratingDesc(false);
+    }
+  };
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
@@ -131,7 +167,21 @@ export default function PostItemPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="desc" className="text-xs">Description</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="desc" className="text-xs">Description</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[10px] gap-1 text-primary hover:text-primary"
+                  onClick={generateDescription}
+                  disabled={generatingDesc}
+                >
+                  {generatingDesc
+                    ? <><Loader2 className="h-3 w-3 animate-spin" />Generating…</>
+                    : <><Sparkles className="h-3 w-3" />Generate with AI</>}
+                </Button>
+              </div>
               <Textarea id="desc" value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the item, any unique marks, colors, brand..." className="text-sm min-h-[80px]" />
             </div>
 
