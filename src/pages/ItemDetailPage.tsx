@@ -10,11 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, MapPin, Clock, Package, User as UserIcon, HandHeart, Loader2, Mail, MessageSquare } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Package, User as UserIcon, HandHeart, Loader2, Mail, MessageSquare, Sparkles, Brain, RefreshCw } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ChatLauncherDialog } from '@/components/ChatLauncherDialog';
 import { format, parseISO } from 'date-fns';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { groq, GROQ_MODEL } from '@/lib/groq';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,6 +54,61 @@ export default function ItemDetailPage() {
   const [foundNote, setFoundNote] = useState('');
   const [foundContact, setFoundContact] = useState<'email' | 'in_app'>('in_app');
   const [submittingFound, setSubmittingFound] = useState(false);
+
+  const [recoveryTips, setRecoveryTips] = useState('');
+  const [tipsLoading, setTipsLoading] = useState(false);
+  const [claimSuggestions, setClaimSuggestions] = useState('');
+  const [claimSuggestLoading, setClaimSuggestLoading] = useState(false);
+
+  const fetchRecoveryTips = useCallback(async () => {
+    if (!item) return;
+    setTipsLoading(true);
+    setRecoveryTips('');
+    try {
+      const res = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful campus lost & found advisor at Stevens Institute of Technology. Give practical, specific recovery tips. Be concise — 3 bullet points max.',
+          },
+          {
+            role: 'user',
+            content: `A student lost their "${item.title}" (${item.category}) at ${item.location} on ${item.date.split('T')[0]}. Description: "${item.description}". Give them specific tips to recover it on campus.`,
+          },
+        ],
+        max_tokens: 200,
+        temperature: 0.6,
+      });
+      setRecoveryTips(res.choices[0]?.message?.content?.trim() ?? '');
+    } catch { setRecoveryTips('Could not load tips. Check your Groq API key.'); }
+    finally { setTipsLoading(false); }
+  }, [item]);
+
+  const fetchClaimSuggestions = useCallback(async () => {
+    if (!item) return;
+    setClaimSuggestLoading(true);
+    setClaimSuggestions('');
+    try {
+      const res = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: 'You help students prove ownership of lost items. Suggest specific details they should mention in their verification answers. Be brief and practical.',
+          },
+          {
+            role: 'user',
+            content: `A student is claiming a "${item.title}" (${item.category}). Description: "${item.description}". What specific details should they mention to prove it is theirs? Give 2-3 short tips.`,
+          },
+        ],
+        max_tokens: 150,
+        temperature: 0.5,
+      });
+      setClaimSuggestions(res.choices[0]?.message?.content?.trim() ?? '');
+    } catch { setClaimSuggestions(''); }
+    finally { setClaimSuggestLoading(false); }
+  }, [item]);
 
   useEffect(() => {
     if (item?.location) setFoundLocation(item.location);
@@ -220,6 +276,41 @@ export default function ItemDetailPage() {
           </CardContent>
         </Card>
 
+        {/* AI Recovery Tips — only for lost items */}
+        {item.type === 'lost' && (
+          <Card className="border-violet-500/30 bg-gradient-to-br from-violet-500/5 to-background">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-violet-500" />
+                  <span className="text-sm font-semibold">AI Recovery Tips</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-500 font-medium">Groq AI</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1 border-violet-500/30 text-violet-600 hover:bg-violet-500/10"
+                  onClick={fetchRecoveryTips}
+                  disabled={tipsLoading}
+                >
+                  {tipsLoading
+                    ? <><Loader2 className="h-3 w-3 animate-spin" />Thinking…</>
+                    : recoveryTips
+                      ? <><RefreshCw className="h-3 w-3" />Refresh</>
+                      : <><Sparkles className="h-3 w-3" />Get Tips</>}
+                </Button>
+              </div>
+              {recoveryTips ? (
+                <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{recoveryTips}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Click "Get Tips" to get AI-powered advice on where to look and who to contact on campus.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Reporter contact card */}
         <Card>
           <CardHeader className="pb-2">
@@ -322,6 +413,32 @@ export default function ItemDetailPage() {
               <Label className="text-xs">What was inside (if bag/case)?</Label>
               <Input className="h-9 text-sm" placeholder="Contents description" value={claimContents} onChange={e => setClaimContents(e.target.value)} />
             </div>
+            {/* AI Claim Helper */}
+            <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+                  <span className="text-xs font-medium text-violet-600 dark:text-violet-400">AI Claim Helper</span>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 text-[10px] px-2 text-violet-600 hover:bg-violet-500/10"
+                  onClick={fetchClaimSuggestions}
+                  disabled={claimSuggestLoading}
+                >
+                  {claimSuggestLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Suggest what to write'}
+                </Button>
+              </div>
+              {claimSuggestions && (
+                <p className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-line">{claimSuggestions}</p>
+              )}
+              {!claimSuggestions && !claimSuggestLoading && (
+                <p className="text-[11px] text-muted-foreground">Get AI suggestions on what specific details to include to prove ownership.</p>
+              )}
+            </div>
+
             <Button onClick={handleClaim} className="w-full" disabled={createClaim.isPending}>
               {createClaim.isPending ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting…</>
